@@ -1,0 +1,3359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jelajah Orde Baru – 3D History Adventure</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js OrbitControls CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Inter & Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Montserrat', sans-serif;
+        }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        /* Custom Animations & Styles */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #0f172a;
+            font-weight: 800;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+        .btn-red {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+        .btn-red:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+        /* Pulse Animation for Active Turn */
+        @keyframes activePulse {
+            0%, 100% { border-color: rgba(245, 158, 11, 1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.5); }
+            50% { border-color: rgba(245, 158, 11, 0.4); box-shadow: 0 0 5px rgba(245, 158, 11, 0.2); }
+        }
+        .active-turn-card {
+            animation: activePulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col justify-between">
+
+    <!-- AUDIO MANAGEMENT -->
+    <!-- Audio synthesizer and Web Audio API will handle all sound effects & BGM -->
+
+    <!-- BACKGROUND FLOATING CANVAS DECORATION -->
+    <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0 opacity-75"></canvas>
+
+    <!-- MAIN CONTAINER -->
+    <div id="app" class="relative z-10 min-h-screen flex flex-col justify-between">
+
+        <!-- HEADER / NAVIGATION (PERMANENT TOP BAR) -->
+        <header class="w-full px-6 py-4 glass-panel flex justify-between items-center border-b border-slate-700/50">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="goToMenu()">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-xl font-black">
+                    🏛️
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-extrabold gold-gradient-text tracking-wide uppercase">Jelajah Orde Baru</h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">3D History Adventure • Sejarah Indonesia</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="toggleLanguage()" id="langToggleBtn" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs md:text-sm font-bold transition flex items-center gap-1.5 border border-slate-700">
+                    <i class="fa-solid fa-globe text-amber-400"></i> <span id="langLabel">ID</span>
+                </button>
+                <button onclick="openModal('guideModal')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition flex items-center gap-2 border border-slate-700">
+                    <i class="fa-solid fa-book-open text-amber-400"></i> <span id="navGuideText" class="hidden md:inline">Panduan</span>
+                </button>
+                <button onclick="openModal('audioModal')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition flex items-center gap-2 border border-slate-700">
+                    <i id="audioBtnIcon" class="fa-solid fa-volume-high text-amber-400"></i> <span id="navAudioText" class="hidden md:inline">Audio</span>
+                </button>
+                <button onclick="openModal('aboutModal')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition flex items-center gap-2 border border-slate-700">
+                    <i class="fa-solid fa-circle-info text-blue-400"></i> <span id="navAboutText" class="hidden md:inline">Tentang</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN MENU SCREEN -->
+        <main id="menuScreen" class="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto w-full">
+            <div class="glass-panel p-8 md:p-12 rounded-3xl w-full border border-amber-500/20 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <span id="menuBadgeText" class="inline-block px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs md:text-sm font-semibold mb-4">
+                    🇮🇩 Game Edukasi Sejarah Masa Orde Baru (1966 - 1998)
+                </span>
+                
+                <h2 id="menuTitleText" class="text-3xl md:text-5xl font-black text-white tracking-tight mb-4 leading-tight">
+                    Petualangan Ular Tangga <span class="gold-gradient-text">3D Interaktif</span>
+                </h2>
+                
+                <p id="menuDescText" class="text-slate-300 text-sm md:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
+                    Uji pengetahuan sejarah Indonesia era Orde Baru! Hadapi dinamika awal Orde Baru, Repelita & Swasembada Pangan, fusi partai politik, dwifungsi ABRI, kebijakan ekonomi, hingga krisis moneter dan Reformasi 1998 di papan 3D interaktif.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-xl mx-auto mb-6">
+                    <button onclick="startSetup()" id="menuStartBtn" class="btn-gold py-4 px-6 rounded-2xl text-base flex items-center justify-center gap-3 col-span-1 sm:col-span-2 md:col-span-3">
+                        <i class="fa-solid fa-gamepad text-xl"></i> <span>Mulai Petualangan</span>
+                    </button>
+                    <button onclick="openModal('guideModal')" id="menuGuideBtn" class="py-3 px-5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition border border-slate-700 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-question text-amber-400"></i> <span>Panduan Main</span>
+                    </button>
+                    <button onclick="openModal('audioModal')" id="menuAudioBtn" class="py-3 px-5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition border border-slate-700 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-sliders text-amber-400"></i> <span>Pengaturan</span>
+                    </button>
+                    <button onclick="openModal('aboutModal')" id="menuAboutBtn" class="py-3 px-5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition border border-slate-700 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-award text-amber-400"></i> <span>Info Proyek</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-center gap-6 text-xs text-slate-400 pt-4 border-t border-slate-800">
+                    <span><i class="fa-solid fa-cubes text-amber-400 mr-1"></i> Board 3D Engine</span>
+                    <span><i class="fa-solid fa-users text-amber-400 mr-1"></i> 2–6 Players</span>
+                    <span><i class="fa-solid fa-robot text-amber-400 mr-1"></i> Smart AI</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- SETUP PLAYER SCREEN -->
+        <main id="setupScreen" class="hidden flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full flex-col justify-center">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl border border-slate-700 shadow-2xl">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
+                    <div>
+                        <h2 id="setupTitleText" class="text-2xl font-bold text-white flex items-center gap-3">
+                            <i class="fa-solid fa-users-gear text-amber-400"></i> Pengaturan Permainan & Karakter
+                        </h2>
+                        <p id="setupSubText" class="text-xs text-slate-400 mt-1">Pilih mode bermain dan kustomisasi avatar 3D pemain Anda (Hingga 6 Pemain)</p>
+                    </div>
+                    <button onclick="goToMenu()" class="text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- MODE SELECTOR -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div id="modeMulti" onclick="setGameMode('multi')" class="p-4 rounded-2xl bg-slate-800/90 border-2 border-amber-500 cursor-pointer transition flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 text-2xl">
+                            <i class="fa-solid fa-people-hold"></i>
+                        </div>
+                        <div>
+                            <h3 id="modeMultiTitle" class="font-bold text-white">Multiplayer Lokal</h3>
+                            <p id="modeMultiDesc" class="text-xs text-slate-400">Main 2 hingga 6 pemain secara bergantian dalam 1 perangkat</p>
+                        </div>
+                    </div>
+                    
+                    <div id="modeVsAI" onclick="setGameMode('ai')" class="p-4 rounded-2xl bg-slate-800/50 border-2 border-slate-700 cursor-pointer transition flex items-center gap-4 hover:border-slate-500">
+                        <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 text-2xl">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <h3 id="modeAITitle" class="font-bold text-white">Pemain vs Komputer (AI)</h3>
+                            <p id="modeAIDesc" class="text-xs text-slate-400">Tantang lawan AI (hingga 6 peserta) dengan Easy, Normal, atau Hard</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NUMBER OF PLAYERS SELECTOR (2 TO 6 PLAYERS) -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-slate-900/60 rounded-2xl border border-slate-800">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label id="playerCountLabel" class="text-sm font-semibold text-slate-300">Jumlah Peserta:</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="setPlayerCount(2)" id="pCount2" class="px-3.5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm">2 Pemain</button>
+                            <button onclick="setPlayerCount(3)" id="pCount3" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700">3 Pemain</button>
+                            <button onclick="setPlayerCount(4)" id="pCount4" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700">4 Pemain</button>
+                            <button onclick="setPlayerCount(5)" id="pCount5" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700">5 Pemain</button>
+                            <button onclick="setPlayerCount(6)" id="pCount6" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700">6 Pemain</button>
+                        </div>
+                    </div>
+
+                    <div id="aiDifficultyContainer" class="hidden flex items-center gap-3">
+                        <label class="text-sm font-semibold text-slate-300">Tingkat AI:</label>
+                        <select id="aiDifficultySelect" onchange="updateAIDifficulty()" class="bg-slate-800 text-amber-300 border border-slate-700 px-3 py-2 rounded-xl text-xs font-semibold">
+                            <option value="easy">Easy (Mudah • ~45% Benar)</option>
+                            <option value="normal" selected>Normal (Sedang • ~70% Benar)</option>
+                            <option value="hard">Hard (Sulit • ~90% Benar)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- PLAYER CUSTOMIZATION TABS & PREVIEW -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+                    <!-- Left: Player Selection Tabs & Form -->
+                    <div class="lg:col-span-8 flex flex-col gap-4">
+                        <div id="playerTabs" class="flex gap-2 border-b border-slate-700 pb-2 overflow-x-auto">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <div id="customizationForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Nama / Nickname</label>
+                                <input type="text" id="custName" oninput="updateCurrentPlayerConfig()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Warna Karakter & Pion</label>
+                                <div class="flex gap-2 items-center">
+                                    <input type="color" id="custColor" onchange="updateCurrentPlayerConfig()" class="w-10 h-10 rounded-lg bg-transparent cursor-pointer">
+                                    <span id="custColorHex" class="text-xs font-mono text-slate-400">#ff0000</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Warna Kulit Avatar</label>
+                                <select id="custSkin" onchange="updateCurrentPlayerConfig()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                                    <option value="#f8d5c2">Sawo Matang Cerah</option>
+                                    <option value="#d2996c">Sawo Matang Khas Indonesia</option>
+                                    <option value="#7c4d30">Cokelat Gelap</option>
+                                    <option value="#ffe0bd">Cerah Kuning Langsat</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Gaya Rambut / Penutup Kepala</label>
+                                <select id="custHair" onchange="updateCurrentPlayerConfig()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                                    <option value="peci">Kopiah / Peci Nasional</option>
+                                    <option value="warrior">Topi Pejuang 45</option>
+                                    <option value="short">Rambut Pendek Rapi</option>
+                                    <option value="long">Rambut Panjang/Kuncir</option>
+                                    <option value="bun">Rambut Cepol Sanggul</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Aksesori Tambahan</label>
+                                <select id="custAccessory" onchange="updateCurrentPlayerConfig()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                                    <option value="none">Tanpa Aksesori</option>
+                                    <option value="glasses">Kacamata Bulat Klasik</option>
+                                    <option value="scarf">Syal Merah Putih</option>
+                                    <option value="badge">Lencana Bintang Emas</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Tipe Peserta</label>
+                                <input type="text" id="custType" readonly class="w-full bg-slate-800/50 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400 font-semibold cursor-not-allowed">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Canvas 2D Preview -->
+                    <div class="lg:col-span-4 flex flex-col items-center justify-center bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-center">
+                        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Preview Live Avatar</span>
+                        <div class="w-36 h-36 relative flex items-center justify-center bg-slate-950 rounded-2xl border border-amber-500/30 p-2 mb-2">
+                            <canvas id="avatarPreviewCanvas" width="128" height="128" class="w-full h-full object-contain"></canvas>
+                        </div>
+                        <p id="previewNameTag" class="text-sm font-bold text-white mb-1">Pemain 1</p>
+                        <span id="previewStyleTag" class="text-xs text-slate-400">Peci Nasional • Red Pawn</span>
+                    </div>
+                </div>
+
+                <!-- START GAME BUTTON -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                    <button onclick="goToMenu()" class="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition">
+                        Batal
+                    </button>
+                    <button onclick="launch3DGame()" class="btn-gold px-8 py-3 rounded-xl text-base flex items-center gap-3">
+                        <i class="fa-solid fa-play"></i> Mulai Main 3D
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- GAMEPLAY SCREEN (3D BOARD HUD) -->
+        <main id="gameScreen" class="hidden flex-1 relative w-full h-[calc(100vh-80px)] overflow-hidden">
+            <!-- THREE.JS 3D CANVAS CONTAINER -->
+            <div id="threeCanvasContainer" class="absolute inset-0 w-full h-full bg-slate-950"></div>
+
+            <!-- HUD OVERLAY TOP BAR -->
+            <div class="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-auto z-20">
+                <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3 border border-slate-700">
+                    <div id="activePlayerAvatarBadge" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-950 font-black text-sm">
+                        P1
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">Giliran Saat Ini</span>
+                        <h4 id="activePlayerNameHUD" class="text-sm font-bold text-white leading-tight">Pemain 1</h4>
+                    </div>
+                </div>
+
+                <!-- CAMERA & WEATHER CONTROLS -->
+                <div class="glass-panel px-3 py-1.5 rounded-2xl flex flex-wrap items-center gap-1.5 border border-slate-700 text-xs font-semibold">
+                    <span class="text-slate-400 text-[11px] mr-0.5 hidden sm:inline"><i class="fa-solid fa-camera mr-1"></i>Kamera:</span>
+                    <button onclick="setCameraView('iso')" id="camBtnIso" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold transition">Isometrik</button>
+                    <button onclick="setCameraView('follow')" id="camBtnFollow" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Ikuti Pion</button>
+                    <button onclick="setCameraView('top')" id="camBtnTop" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Peta Atas</button>
+                    <span class="text-slate-600 mx-0.5 hidden md:inline">|</span>
+                    <span class="text-slate-400 text-[11px] mr-0.5 hidden md:inline"><i class="fa-solid fa-cloud-sun mr-1 text-amber-400"></i>Cuaca:</span>
+                    <button onclick="setWeatherMode('pagi')" id="weatherBtnPagi" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">🌅 Pagi</button>
+                    <button onclick="setWeatherMode('sore')" id="weatherBtnSore" class="px-2 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold transition">🌇 Sore</button>
+                    <button onclick="setWeatherMode('malam')" id="weatherBtnMalam" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">🌙 Malam</button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="togglePauseGame()" class="glass-panel px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition flex items-center gap-1.5 border border-slate-700">
+                        <i id="pauseBtnIcon" class="fa-solid fa-pause text-amber-400"></i> Pause
+                    </button>
+                    <button onclick="openModal('audioModal')" class="glass-panel px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition flex items-center gap-1.5 border border-slate-700">
+                        <i class="fa-solid fa-sliders text-amber-400"></i> Audio
+                    </button>
+                    <button onclick="goToMenu()" class="glass-panel px-3 py-2 rounded-xl text-xs font-bold text-rose-300 hover:bg-slate-800 transition flex items-center gap-1.5 border border-slate-700">
+                        <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                    </button>
+                </div>
+            </div>
+
+            <!-- HUD LEFT PANEL: PLAYER SCORES & POSITIONS -->
+            <div class="absolute top-28 left-3 flex flex-col gap-2.5 w-64 max-h-[calc(100vh-140px)] pointer-events-auto z-20">
+                <!-- PLAYER CARDS LIST -->
+                <div id="playerListHUD" class="flex flex-col gap-2.5 overflow-y-auto pr-1">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- HUD BOTTOM CENTER: DICE & ACTIONS -->
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 pointer-events-auto z-20">
+                <!-- Floating Orbit Camera Hint Pill -->
+                <div class="glass-panel px-4 py-1.5 rounded-full text-xs font-semibold text-slate-900 bg-white/90 border border-white/70 shadow-lg flex items-center gap-2 backdrop-blur-md">
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-hand-pointer text-amber-600"></i> Seret layar untuk memutar kamera 3D • Scroll/Cubit untuk Zoom</span>
+                </div>
+
+                <!-- Dice Roll Result Overlay -->
+                <div id="diceResultBadge" class="hidden glass-panel px-4 py-1.5 rounded-full text-amber-300 font-extrabold text-sm border border-amber-500/40 animate-bounce">
+                    🎲 Angka Dadu: <span id="diceValDisplay" class="text-lg text-white">6</span>
+                </div>
+
+                <button id="rollDiceBtn" onclick="humanRollDice()" class="btn-gold px-8 py-4 rounded-2xl text-lg font-black tracking-wide flex items-center gap-3 shadow-2xl transition transform active:scale-95">
+                    <i class="fa-solid fa-dice text-2xl"></i> LEMPAR DADU 3D
+                </button>
+            </div>
+        </main>
+
+        <!-- QUESTION MODAL (POP-UP WHEN LANDING ON TILE) -->
+        <div id="questionModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-2xl w-full border border-amber-500/30 shadow-2xl relative overflow-hidden animate-fade-in">
+                
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700">
+                    <div class="flex items-center gap-2">
+                        <span id="qCategoryBadge" class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
+                            Demokrasi Liberal
+                        </span>
+                        <span id="qTypeBadge" class="px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30">
+                            Pilihan Ganda
+                        </span>
+                    </div>
+                    <span id="qNumberTag" class="text-xs font-mono text-slate-400">Soal #1</span>
+                </div>
+
+                <h3 id="qText" class="text-base md:text-lg font-bold text-white mb-6 leading-relaxed">
+                    Pertanyaan sejarah akan muncul di sini...
+                </h3>
+
+                <!-- OPTIONS CONTAINER -->
+                <div id="qOptionsContainer" class="flex flex-col gap-3 mb-6">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- SUBMIT / ACTION BUTTON -->
+                <div class="flex items-center justify-between pt-4 border-t border-slate-700">
+                    <div id="qTimerContainer" class="text-xs text-slate-400 font-medium">
+                        <i class="fa-solid fa-clock text-amber-400 mr-1"></i> Jawablah dengan cermat
+                    </div>
+                    <button id="submitAnswerBtn" onclick="submitUserAnswer()" class="btn-gold px-6 py-2.5 rounded-xl text-sm flex items-center gap-2">
+                        Submit Jawaban <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- FEEDBACK & EXPLANATION OVERLAY -->
+                <div id="qFeedbackPanel" class="hidden mt-4 p-4 rounded-2xl border transition-all">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div id="qFeedbackIcon" class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"></div>
+                        <h4 id="qFeedbackTitle" class="font-extrabold text-sm">Jawaban Benar!</h4>
+                        <span id="qFeedbackScore" class="ml-auto font-black text-xs px-2.5 py-1 rounded-lg"></span>
+                    </div>
+                    <p id="qExplanationText" class="text-xs text-slate-300 leading-relaxed mt-1">
+                        Penjelasan sejarah akan ditampilkan di sini.
+                    </p>
+                    <button id="nextTurnBtn" onclick="closeQuestionModal()" class="mt-4 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition border border-slate-700">
+                        Lanjutkan Permainan <i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- VICTORY / GAME OVER MODAL -->
+        <div id="victoryModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg hidden flex items-center justify-center p-4">
+            <div class="glass-panel p-8 rounded-3xl max-w-xl w-full text-center border border-amber-500/40 shadow-2xl relative">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 text-4xl">
+                    🏆
+                </div>
+                
+                <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Pemenang Petualangan</span>
+                <h2 id="winnerNameDisplay" class="text-3xl font-black text-white mt-1 mb-2">Pemain 1</h2>
+                <p class="text-xs text-slate-300 mb-6">Berhasil mencapai Kotak 100 dan menguasai Sejarah Masa Orde Lama!</p>
+
+                <!-- LEADERBOARD TABLE -->
+                <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-800 mb-6">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-left">Peringkat Akhir</h4>
+                    <div id="leaderboardList" class="flex flex-col gap-2">
+                        <!-- Dynamic Leaderboard Items -->
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="restartGameSameSetup()" class="flex-1 btn-gold py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> Main Lagi
+                    </button>
+                    <button onclick="goToMenu()" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700">
+                        🏠 Menu Utama
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANDUAN PERMAINAN MODAL -->
+        <div id="guideModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-slate-700 shadow-2xl">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-700">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-amber-400"></i> Panduan Permainan
+                    </h3>
+                    <button onclick="closeModal('guideModal')" class="text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4 text-xs md:text-sm text-slate-300 leading-relaxed">
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">1. Jumlah Pemain & Mode AI</h4>
+                        <p>Pilih mode <b>Multiplayer Lokal (2–6 Pemain)</b> atau lawan <b>Komputer (AI)</b> dengan pilihan tingkat kesulitan Easy (~45%), Normal (~70%), atau Hard (~90%).</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">2. Kustomisasi Avatar 3D</h4>
+                        <p>Atur nama, warna baju/pion, warna kulit, gaya rambut (peci, topi pejuang, kuncir), serta aksesori. Pion 3D di papan akan menyesuaikan warna dan gaya yang Anda pilih.</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">3. Lempar Dadu & Pergerakan</h4>
+                        <p>Tekan <b>"LEMPAR DADU 3D"</b> saat giliran Anda. Pion bergerak melompat langkah demi langkah secara zig-zag sesuai angka dadu (1–6).</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">4. Menjawab Soal Sejarah Orde Baru</h4>
+                        <p>Saat mendarat di kotak, panel pertanyaan akan muncul:</p>
+                        <ul class="list-disc list-inside mt-1 space-y-1 text-slate-400">
+                            <li><b>Pilihan Ganda:</b> Pilih 1 opsi jawaban yang benar.</li>
+                            <li><b>Pilihan Ganda Kompleks:</b> Centang semua jawaban yang benar (bisa lebih dari satu), lalu tekan <b>Submit Jawaban</b>.</li>
+                        </ul>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">5. Sistem Skor & Penilaian</h4>
+                        <p>Jawaban benar memberikan <b>+10 Poin</b>. Jawaban salah/kurang tepat mengurangi <b>-5 Poin</b> (Skor minimal 0).</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">6. Eskalator 3D & Ular 3D</h4>
+                        <p>Mendarat di pangkal <b>Eskalator 3D</b> membuat pion meluncur naik ke kotak lebih tinggi. Mendarat di kepala <b>Ular 3D</b> membuat pion terpeleset turun!</p>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 mb-1">7. Aturan Kotak 100 & Kemenangan</h4>
+                        <p>Pemain harus mendarat tepat di Kotak 100. Jika kelebihan angka dadu, pion akan <b>memantul mundur</b> sesuai sisa langkah. Pemain pertama di kotak 100 menang!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PENGATURAN AUDIO MODAL -->
+        <div id="audioModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-slate-700 shadow-2xl">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-700">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-amber-400"></i> Pengaturan Audio
+                    </h3>
+                    <button onclick="closeModal('audioModal')" class="text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-6 text-xs md:text-sm text-slate-300">
+                    <!-- BGM Toggle & Volume -->
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-music text-amber-400"></i> Musik Latar (BGM)
+                            </span>
+                            <input type="checkbox" id="bgmToggle" onchange="toggleBGM(this.checked)" checked class="w-5 h-5 accent-amber-500 cursor-pointer">
+                        </div>
+                        <label class="block text-slate-400 text-xs mb-1">Volume Musik</label>
+                        <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.4" oninput="updateBGMVolume(this.value)" class="w-full accent-amber-500 cursor-pointer">
+                    </div>
+
+                    <!-- SFX Toggle & Volume -->
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-volume-high text-amber-400"></i> Efek Suara (SFX)
+                            </span>
+                            <input type="checkbox" id="sfxToggle" onchange="toggleSFX(this.checked)" checked class="w-5 h-5 accent-amber-500 cursor-pointer">
+                        </div>
+                        <label class="block text-slate-400 text-xs mb-1">Volume SFX</label>
+                        <input type="range" id="sfxVolume" min="0" max="1" step="0.05" value="0.7" oninput="updateSFXVolume(this.value)" class="w-full accent-amber-500 cursor-pointer">
+                    </div>
+
+                    <!-- Time of Day / Weather Setting inside Settings Modal -->
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-cloud-sun text-amber-400"></i> Suasana & Cuaca 3D
+                            </span>
+                            <span id="modalWeatherLabel" class="text-[11px] font-bold text-amber-300 uppercase">Sore</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="setWeatherMode('pagi')" id="modalWeatherBtnPagi" class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-xs font-bold text-center">🌅 Pagi</button>
+                            <button onclick="setWeatherMode('sore')" id="modalWeatherBtnSore" class="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold transition text-xs text-center">🌇 Sore</button>
+                            <button onclick="setWeatherMode('malam')" id="modalWeatherBtnMalam" class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-xs font-bold text-center">🌙 Malam</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TENTANG GAME MODAL -->
+        <div id="aboutModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-lg w-full border border-slate-700 shadow-2xl text-center">
+                <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto mb-4 text-3xl">
+                    🏛️
+                </div>
+
+                <h3 class="text-xl font-extrabold gold-gradient-text mb-1">Jelajah Orde Baru</h3>
+                <span class="text-xs text-slate-400 block mb-4">3D History Adventure • Edisi Edukasi Sejarah Indonesia</span>
+
+                <div class="text-xs text-slate-300 leading-relaxed text-left bg-slate-900/80 p-4 rounded-2xl border border-slate-800 mb-6 space-y-2">
+                    <p><b>Deskripsi:</b> Game ini dirancang sebagai media pembelajaran interaktif untuk materi Sejarah Indonesia tingkat SMA/SMK mengenai <b>Masa Orde Baru (1966 – 1998)</b>.</p>
+                    <p><b>Materi Dicakup:</b> Lahirnya Orde Baru, Supersemar & TAP MPRS, Stabilitas Politik & Keamanan, Penyederhanaan Partai Politik (Fusi), Dwifungsi ABRI, Pembangunan Jangka Panjang & Repelita, Swasembada Beras 1984, Politik Luar Negeri Bebas Aktif & ASEAN, hingga Krisis Moneter 1997/1998 dan Reformasi.</p>
+                    <p><b>Teknologi:</b> HTML5, Tailwind CSS, JavaScript (ES6+), Web Audio API, dan <b>Three.js Engine</b> untuk rendering papan 3D interaktif.</p>
+                </div>
+
+                <button onclick="closeModal('aboutModal')" class="w-full btn-gold py-2.5 rounded-xl font-bold text-xs">
+                    Tutup Informasi
+                </button>
+            </div>
+        </div>
+
+        <!-- FOOTER BAR -->
+        <footer class="w-full px-6 py-3 glass-panel text-center text-[11px] text-slate-400 border-t border-slate-800">
+            <span>&copy; 2026 <b>Jelajah Orde Baru – 3D History Adventure</b> • Proyek Media Edukasi Sejarah SIJA</span>
+        </footer>
+
+    </div>
+
+    <!-- JAVASCRIPT GAME LOGIC & THREE.JS ENGINE -->
+    <script>
+        /* ==========================================================================
+           1. QUESTION BANK (34 AUTHENTIC QUESTIONS ON MASA ORDE BARU)
+           ========================================================================== */
+        const QUESTION_BANK = [
+            // --- 17 PILIHAN GANDA (SINGLE CHOICE) ---
+            {
+                id: 1, type: "single", category: "Lahirnya Orde Baru",
+                question: "Pemerintahan Masa Orde Baru di Indonesia berlangsung dalam rentang tahun...",
+                options: ["1950 – 1959", "1959 – 1965", "1966 – 1998", "1998 – 2004"],
+                correct: 2,
+                explanation: "Masa Orde Baru bermula setelah lahirnya Supersemar (1966) dan berakhir seiring mundurnya Presiden Soeharto pada Mei 1998."
+            },
+            {
+                id: 2, type: "single", category: "Pembangunan Ekonomi",
+                question: "Program pembangunan lima tahunan yang mulai dilaksanakan sejak 1 April 1969 pada masa Orde Baru disebut...",
+                options: ["Deklarasi Ekonomi (Dekon)", "Repelita (Rencana Pembangunan Lima Tahun)", "Plan Kasimo", "Banteng Program"],
+                correct: 1,
+                explanation: "Repelita (Rencana Pembangunan Lima Tahun) dijalankan bertahap (Repelita I–VI) sebagai bagian dari Pembangunan Jangka Panjang (PJP) 25 tahun."
+            },
+            {
+                id: 3, type: "single", category: "Swasembada Pangan",
+                question: "Pada tahun 1984, pemerintahan Orde Baru meraih penghargaan internasional dari FAO karena keberhasilan Indonesia dalam...",
+                options: [
+                    "Swasembada beras / pangan",
+                    "Ekspor teknologi kedirgantaraan",
+                    "Menghapuskan utang luar negeri sepenuhnya",
+                    "Menjadi pusat keuangan Asia"
+                ],
+                correct: 0,
+                explanation: "Pada tahun 1984 Indonesia berhasil mencapai swasembada beras berkat program intensifikasi pertanian seperti Panca Usaha Tani dan Bimas."
+            },
+            {
+                id: 4, type: "single", category: "Fusi Partai Politik",
+                question: "Kebijakan penyederhanaan (fusi) partai politik pada tahun 1973 mengelompokkan partai-partai Islam ke dalam...",
+                options: [
+                    "Partai Demokrasi Indonesia (PDI)",
+                    "Partai Persatuan Pembangunan (PPP)",
+                    "Golongan Karya (Golkar)",
+                    "Partai Nasional Indonesia (PNI)"
+                ],
+                correct: 1,
+                explanation: "Pada 5 Januari 1973, partai-partai bernafaskan Islam (NU, Parmusi, PSII, Perti) bergabung menjadi Partai Persatuan Pembangunan (PPP)."
+            },
+            {
+                id: 5, type: "single", category: "Fusi Partai Politik",
+                question: "Partai politik yang terbentuk dari gabungan PNI, Parkindo, Partai Katolik, IPKI, dan Murba pada tahun 1973 adalah...",
+                options: ["PPP", "Golkar", "PDI", "PAN"],
+                correct: 2,
+                explanation: "Partai Demokrasi Indonesia (PDI) dibentuk pada 10 Januari 1973 melalui fusi partai nasionalis dan non-Islam."
+            },
+            {
+                id: 6, type: "single", category: "Stabilitas Politik",
+                question: "Lembaga keamanan dan ketertiban yang dibentuk pada masa awal Orde Baru untuk mengatasi ancaman keamanan dan stabilitas negara adalah...",
+                options: ["Kopkamtib", "BKR", "TKR", "BPUPKI"],
+                correct: 0,
+                explanation: "Kopkamtib (Komando Pemulihan Keamanan dan Ketertiban) dibentuk untuk menjaga stabilitas keamanan pada masa Orde Baru."
+            },
+            {
+                id: 7, type: "single", category: "Dwifungsi ABRI",
+                question: "Konsep Dwifungsi ABRI pada masa Orde Baru berarti ABRI memiliki peran sebagai kekuatan...",
+                options: [
+                    "Pertahanan keamanan sekaligus sosial-politik",
+                    "Ekonomi perdagangan sekaligus peradilan",
+                    "Kebudayaan sekaligus keagamaan",
+                    "Legislative sekaligus yudikatif murni"
+                ],
+                correct: 0,
+                explanation: "Dwifungsi ABRI menempatkan ABRI tidak hanya sebagai penjaga pertahanan-keamanan, tetapi juga berperan dalam bidang sosial dan politik."
+            },
+            {
+                id: 8, type: "single", category: "Pedoman Ideologi",
+                question: "Program penataran untuk memasyarakatkan dan menghayati nilai-nilai Pancasila secara seragam pada masa Orde Baru dikenal sebagai...",
+                options: ["Pedoman P4 (Ekaprasetya Pancakarsa)", "Manipol USDEK", "Piagam Jakarta", "Dekrit Presiden"],
+                correct: 0,
+                explanation: "P4 (Pedoman Penghayatan dan Pengamalan Pancasila) atau Ekaprasetya Pancakarsa ditetapkan melalui TAP MPR No. II/MPR/1978."
+            },
+            {
+                id: 9, type: "single", category: "Politik Luar Negeri",
+                question: "Pada masa Orde Baru, hubungan luar negeri Indonesia mengalami perubahan signifikan dengan memulihkan hubungan baik dengan negara tetangga dan ikut mendirikan...",
+                options: ["ASEAN (1967)", "NATO (1949)", "Pakta Warsawa (1955)", "Liga Arab (1945)"],
+                correct: 0,
+                explanation: "Indonesia memelopori berdirinya ASEAN pada 8 Agustus 1967 di Bangkok untuk menciptakan stabilitas dan kerja sama kawasan Asia Tenggara."
+            },
+            {
+                id: 10, type: "single", category: "Integrasi Timor Timur",
+                question: "Integrasi wilayah Timor Timur ke dalam Negara Kesatuan Republik Indonesia pada tahun 1976 dikukuhkan melalui...",
+                options: [
+                    "UU No. 7 Tahun 1976",
+                    "Perjanjian Linggarjati",
+                    "Deklarasi Djuanda",
+                    "Perjanjian Renville"
+                ],
+                correct: 0,
+                explanation: "Integrasi Timor Timur dikukuhkan melalui Undang-Undang Nomor 7 Tahun 1976 tentang Pengesahan Penyatuan Wilayah Timor Timur."
+            },
+            {
+                id: 11, type: "single", category: "Pembangunan Sosial",
+                question: "Program pengendalian pertumbuhan penduduk yang digalakkan secara luas pada masa Orde Baru melalui slogan 'Dua Anak Cukup' adalah...",
+                options: ["Keluarga Berencana (KB)", "Transmigrasi Umum", "Padat Karya", " Wajib Belajar 6 Tahun"],
+                correct: 0,
+                explanation: "Program Keluarga Berencana (KB) dikelola oleh BKKBN untuk menekan laju pertumbuhan penduduk agar seimbang dengan pembangunan."
+            },
+            {
+                id: 12, type: "single", category: "Pembangunan Sosial",
+                question: "Program pemindahan penduduk dari daerah padat (seperti Jawa dan Bali) ke daerah yang penduduknya masih jarang disebut...",
+                options: ["Urbanisasi", "Transmigrasi", "Imigrasi", "Emigrasi"],
+                correct: 1,
+                explanation: "Transmigrasi menjadi salah satu program penting Orde Baru untuk pemerataan penduduk dan pembukaan lahan pertanian di luar Jawa."
+            },
+            {
+                id: 13, type: "single", category: "Pemilihan Umum",
+                question: "Pemilihan Umum pertama pada masa Orde Baru diselenggarakan pada tahun...",
+                options: ["1968", "1971", "1977", "1982"],
+                correct: 1,
+                explanation: "Pemilu pertama Orde Baru dilaksanakan pada 3 Juli 1971, diikuti oleh 9 partai politik dan 1 golongan karya (Golkar)."
+            },
+            {
+                id: 14, type: "single", category: "Dinamika Politik",
+                question: "Peristiwa protes dan demonstrasi besar-besaran mahasiswa serta masyarakat pada Januari 1974 yang bertepatan dengan kunjungan PM Jepang Tanaka dikenal sebagai...",
+                options: ["Peristiwa Malari", "Peristiwa Tanjung Priok", "Peristiwa Trisakti", "Peristiwa Rengasdengklok"],
+                correct: 0,
+                explanation: "Malari (Malapetaka Lima Belas Januari) 1974 dipicu kritik terhadap ketimpangan ekonomi, dominasi modal asing, dan praktik KKN."
+            },
+            {
+                id: 15, type: "single", category: "Runtuhnya Orde Baru",
+                question: "Krisis ekonomi yang melanda Asia Tenggara pada pertengahan 1997 dan memukul keras ekonomi Indonesia diawali oleh...",
+                options: [
+                    "Krisis moneter dan anjloknya nilai tukar Rupiah",
+                    "Surplus anggaran negara yang berlebihan",
+                    "Penghapusan seluruh pajak ekspor minyak",
+                    "Kemenangan pemilu yang sangat demokratis"
+                ],
+                correct: 0,
+                explanation: "Krisis moneter 1997 menyebabkan nilai tukar Rupiah melemah tajam, memicu inflasi, kebangkrutan usaha, dan PHK massal."
+            },
+            {
+                id: 16, type: "single", category: "Reformasi 1998",
+                question: "Empat mahasiswa Universitas Trisakti yang gugur tertembak dalam aksi damai menuntut reformasi pada 12 Mei 1998 dikenang sebagai...",
+                options: ["Pahlawan Revolusi", "Pahlawan Reformasi", "Pahlawan Ampera", "Bapak Pembangunan"],
+                correct: 1,
+                explanation: "Empat mahasiswa Universitas Trisakti yang gugur pada 12 Mei 1998 ditetapkan sebagai Pahlawan Reformasi."
+            },
+            {
+                id: 17, type: "single", category: "Akhir Orde Baru",
+                question: "Presiden Soeharto secara resmi menyatakan berhenti dari jabatannya sebagai Presiden Republik Indonesia pada tanggal...",
+                options: ["11 Maret 1966", "12 Mei 1998", "21 Mei 1998", "17 Agustus 1998"],
+                correct: 2,
+                explanation: "Pada 21 Mei 1998 pagi, Soeharto membacakan pernyataan berhenti sebagai Presiden RI dan kekuasaan diserahkan kepada Wapres B.J. Habibie."
+            },
+
+            // --- 17 PILIHAN GANDA KOMPLEKS (CHECKBOX - MULTIPLE CORRECT) ---
+            {
+                id: 18, type: "complex", category: "Pembangunan Ekonomi",
+                question: "Manakah kebijakan dan capaian yang menonjol dalam pembangunan ekonomi pada masa Orde Baru? (Pilih semua yang benar)",
+                options: [
+                    "Pelaksanaan program Repelita secara bertahap",
+                    "Pencapaian swasembada beras pada tahun 1984",
+                    "Pembangunan infrastruktur, irigasi, dan sektor industri",
+                    "Penghapusan sistem perbankan nasional sepenuhnya"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Orde Baru menjalankan Repelita, membangun infrastruktur serta pertanian hingga swasembada beras 1984, dan mengembangkan industri."
+            },
+            {
+                id: 19, type: "complex", category: "Fusi Partai Politik",
+                question: "Pilihlah organisasi/partai peserta Pemilu yang ada setelah kebijakan penyederhanaan partai politik pada era Orde Baru!",
+                options: [
+                    "Partai Persatuan Pembangunan (PPP)",
+                    "Golongan Karya (Golkar)",
+                    "Partai Demokrasi Indonesia (PDI)",
+                    "Partai Komunis Indonesia (PKI)"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Setelah fusi partai 1973, kontestan pemilu Orde Baru terdiri atas PPP, PDI, dan Golongan Karya (Golkar)."
+            },
+            {
+                id: 20, type: "complex", category: "Karakteristik Orde Baru",
+                question: "Pilihlah ciri-ciri utama penyelenggaraan pemerintahan pada masa Orde Baru!",
+                options: [
+                    "Kekuasaan eksekutif Presiden sangat dominan dan terpusat",
+                    "Stabilitas politik dan keamanan dijadikan prioritas utama pembangunan",
+                    "Pelaksanaan Pemilu secara berkala setiap 5 tahun sekali",
+                    "Penerapan sistem parlementer dengan Perdana Menteri"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Orde Baru menganut sistem presidensial dengan kekuasaan eksekutif kuat, prioritas stabilitas politik, dan Pemilu setiap 5 tahun."
+            },
+            {
+                id: 21, type: "complex", category: "Politik Luar Negeri",
+                question: "Langkah-langkah kebijakan luar negeri Indonesia pada awal Orde Baru antara lain...",
+                options: [
+                    "Mengakhiri konfrontasi dengan Malaysia dan memulihkan hubungan diplomatik",
+                    "Kembali aktif menjadi anggota PBB pada tahun 1966",
+                    "Turut memprakarsai berdirinya ASEAN pada tahun 1967",
+                    "Membentuk pakta militer bersama Blok Timur"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Awal Orde Baru ditandai masuknya kembali Indonesia ke PBB (1966), normalisasi hubungan dengan Malaysia, dan pendirian ASEAN (1967)."
+            },
+            {
+                id: 22, type: "complex", category: "Pembangunan Pertanian",
+                question: "Upaya peningkatan produksi pangan pada masa Orde Baru didukung oleh langkah-langkah seperti...",
+                options: [
+                    "Penggunaan bibit unggul dan pupuk secara tepat",
+                    "Perbaikan dan pembangunan jaringan irigasi",
+                    "Penyuluhan pertanian melalui program Bimas dan Inmas",
+                    "Penghentian seluruh kegiatan pertanian di Pulau Jawa"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Peningkatan produksi pangan ditopang irigasi, bibit unggul, pupuk, serta penyuluhan pertanian seperti Bimas/Inmas."
+            },
+            {
+                id: 23, type: "complex", category: "Kelemahan & Kritik Orde Baru",
+                question: "Faktor-faktor yang menimbulkan kritik dan ketidakpuasan terhadap pemerintahan Orde Baru di kemudian hari meliputi...",
+                options: [
+                    "Praktik Korupsi, Kolusi, dan Nepotisme (KKN)",
+                    "Pembatasan kebebasan pers dan berpendapat",
+                    "Kesenjangan ekonomi dan sentralisasi kekuasaan",
+                    "Penghapusan jabatan presiden secara permanen"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Kritik terhadap Orde Baru banyak menyoroti KKN, pembatasan kebebasan pers/politik, sentralisasi, serta ketimpangan ekonomi."
+            },
+            {
+                id: 24, type: "complex", category: "Tuntutan Reformasi 1998",
+                question: "Pilihlah agenda tuntutan utama gerakan Reformasi tahun 1998!",
+                options: [
+                    "Adili Soeharto dan kroni-kroninya",
+                    "Amandemen UUD 1945 & penghapusan Dwifungsi ABRI",
+                    "Hapuskan KKN (Korupsi, Kolusi, Nepotisme) & otonomi daerah seluas-luasnya",
+                    "Kembali memberlakukan UUDS 1950"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Enam agenda Reformasi 1998 mencakup adili Soeharto & kroninya, amandemen UUD 1945, hapus Dwifungsi ABRI, berantas KKN, otonomi daerah, dan supremasi hukum."
+            },
+            {
+                id: 25, type: "complex", category: "Program Sosial & Budaya",
+                question: "Manakah kebijakan sosial dan pendidikan yang berkembang pada masa Orde Baru?",
+                options: [
+                    "Pembangunan gedung SD Inpres secara merata",
+                    "Program Keluarga Berencana (KB) dan Transmigrasi",
+                    "Penataran P4 sebagai bagian pembinaan ideologi",
+                    "Penghapusan seluruh sekolah negeri"
+                ],
+                correct: [0, 1, 2],
+                explanation: "SD Inpres, program KB, transmigrasi, serta penataran P4 merupakan bagian dari kebijakan sosial-pendidikan masa Orde Baru."
+            },
+            {
+                id: 26, type: "complex", category: "Stabilisasi Awal Orde Baru",
+                question: "Langkah awal pemerintahan Orde Baru untuk memulihkan kondisi ekonomi pada akhir 1960-an antara lain...",
+                options: [
+                    "Menekan laju inflasi yang sangat tinggi",
+                    "Menyusun anggaran belanja negara berimbang dan dinamis",
+                    "Menciptakan iklim yang kondusif bagi masuknya investasi dan bantuan luar negeri",
+                    "Mencetak uang baru tanpa batas setiap bulan"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Stabilisasi ekonomi awal Orde Baru berfokus menekan inflasi, menerapkan anggaran berimbang, dan menarik modal/bantuan luar negeri."
+            },
+            {
+                id: 27, type: "complex", category: "Peran Militer & Politik",
+                question: "Pernyataan yang tepat mengenai peran ABRI pada masa Orde Baru adalah...",
+                options: [
+                    "Memiliki wakil yang diangkat di MPR/DPR melalui Fraksi ABRI",
+                    "Menjalankan fungsi pertahanan dan keamanan negara",
+                    "Terlibat dalam fungsi sosial dan pemerintahan sesuai doktrin Dwifungsi",
+                    "Menjadi partai politik peserta pemilu terpisah dari Golkar"
+                ],
+                correct: [0, 1, 2],
+                explanation: "ABRI berperan di bidang hankam serta sosial-politik, termasuk memiliki Fraksi ABRI di lembaga perwakilan, dan tidak menjadi partai politik peserta pemilu."
+            },
+            {
+                id: 28, type: "complex", category: "Dinamika Ekonomi 1970–1980-an",
+                question: "Ketika harga minyak dunia melemah pada awal 1980-an, kebijakan ekonomi Orde Baru diarahkan untuk...",
+                options: [
+                    "Mendorong ekspor non-migas",
+                    "Melakukan deregulasi dan debirokratisasi di bidang ekonomi/perbankan",
+                    "Memperkuat kemandirian ekonomi di luar sektor minyak bumi",
+                    "Menutup seluruh pelabuhan ekspor Indonesia"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Penurunan penerimaan minyak mendorong pemerintah melakukan deregulasi, debirokratisasi, dan menggenjot ekspor non-migas."
+            },
+            {
+                id: 29, type: "complex", category: "Dampak Krisis 1997/1998",
+                question: "Dampak langsung krisis moneter 1997–1998 bagi masyarakat Indonesia antara lain...",
+                options: [
+                    "Melonjaknya harga kebutuhan pokok dan daya beli menurun",
+                    "Banyak perusahaan gulung tikar sehingga terjadi PHK",
+                    "Meningkatnya angka kemiskinan dan pengangguran",
+                    "Turunnya harga barang secara drastis di seluruh pasar"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Krisis moneter memicu inflasi tinggi, kebangkrutan usaha, PHK, serta lonjakan kemiskinan dan pengangguran."
+            },
+            {
+                id: 30, type: "complex", category: "Gerakan Mahasiswa 1998",
+                question: "Sikap dan aksi mahasiswa menjelang kejatuhan Orde Baru pada Mei 1998 ditandai oleh...",
+                options: [
+                    "Unjuk rasa dan mimbar bebas menuntut reformasi total",
+                    "Pendudukan gedung DPR/MPR oleh mahasiswa dari berbagai daerah",
+                    "Desakan agar dilakukan perubahan mendasar dalam sistem politik dan pemerintahan",
+                    "Penolakan terhadap perubahan demokrasi"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Mahasiswa melakukan aksi demonstrasi besar-besaran hingga menduduki Gedung DPR/MPR di Senayan pada Mei 1998 menuntut reformasi."
+            },
+            {
+                id: 31, type: "complex", category: "Pembangunan Jangka Panjang",
+                question: "Pembangunan Jangka Panjang (PJP) pada masa Orde Baru bertumpu pada Trilogi Pembangunan yang meliputi...",
+                options: [
+                    "Stabilitas nasional yang sehat dan dinamis",
+                    "Pertumbuhan ekonomi yang cukup tinggi",
+                    "Pemerataan pembangunan dan hasil-hasilnya",
+                    "Dominasi militer atas seluruh lembaga peradilan"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Trilogi Pembangunan Orde Baru terdiri atas stabilitas nasional yang sehat dan dinamis, pertumbuhan ekonomi tinggi, serta pemerataan pembangunan."
+            },
+            {
+                id: 32, type: "complex", category: "Kebijakan Pers & Media",
+                question: "Kondisi pers pada masa Orde Baru ditandai oleh hal-hal berikut...",
+                options: [
+                    "Wajib memiliki Surat Izin Usaha Penerbitan Pers (SIUPP)",
+                    "Pengawasan ketat pemerintah terhadap pemberitaan yang dianggap sensitif",
+                    "Beberapa media massa pernah mengalami pencabutan izin terbit (breidel)",
+                    "Kebebasan mutlak tanpa aturan perizinan terbit"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Pers pada masa Orde Baru diatur melalui perizinan seperti SIUPP dan diawasi ketat, dengan sejumlah media mengalami pembredelan."
+            },
+            {
+                id: 33, type: "complex", category: "Kebijakan Pendidikan & Teknologi",
+                question: "Upaya pengembangan sumber daya manusia dan teknologi pada era Orde Baru terlihat dari...",
+                options: [
+                    "Pembangunan fasilitas pendidikan dasar hingga perguruan tinggi",
+                    "Pengembangan industri strategis seperti kedirgantaraan (IPTN) dan perkapalan (PAL)",
+                    "Pengiriman pelajar dan tenaga ahli untuk menempuh studi lanjutan",
+                    "Penghapusan kurikulum sejarah nasional"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Orde Baru memperluas akses pendidikan dan mendorong industri strategis/teknologi (seperti IPTN dan PAL) serta peningkatan SDM."
+            },
+            {
+                id: 34, type: "complex", category: "Peralihan ke Reformasi",
+                question: "Peristiwa penting yang menandai berakhirnya Orde Baru dan dimulainya era Reformasi pada tahun 1998 meliputi...",
+                options: [
+                    "Tragedi Trisakti pada 12 Mei 1998",
+                    "Aksi mahasiswa di Gedung DPR/MPR pada pertengahan Mei 1998",
+                    "Mundurnya Presiden Soeharto pada 21 Mei 1998 dan pengangkatan B.J. Habibie",
+                    "Penetapan UUD Sementara 1950 sebagai konstitusi tetap"
+                ],
+                correct: [0, 1, 2],
+                explanation: "Tragedi Trisakti, aksi mahasiswa di DPR/MPR, dan lengsernya Soeharto pada 21 Mei 1998 menjadi tonggak berakhirnya Orde Baru."
+            }
+        ];
+
+        /* ==========================================================================
+           2. GLOBAL GAME STATE MANAGEMENT
+           ========================================================================== */
+        const gameState = {
+            lang: 'id', // 'id' or 'en'
+            mode: 'multi', // 'multi' or 'ai'
+            playerCount: 2,
+            aiDifficulty: 'normal', // 'easy', 'normal', 'hard'
+            players: [],
+            activePlayerIndex: 0,
+            gameActive: false,
+            isDiceRolling: false,
+            isMoving: false,
+            isPaused: false,
+            cameraMode: 'iso',
+            weatherMode: 'sore', // 'pagi', 'sore', 'malam'
+            askedQuestionIds: new Set(),
+            currentQuestion: null,
+            selectedOptions: [],
+            escalators: {
+                5: 26,
+                18: 39,
+                34: 55,
+                48: 71,
+                62: 83,
+                74: 95
+            },
+            snakes: {
+                24: 6,
+                43: 17,
+                56: 32,
+                73: 52,
+                87: 66,
+                98: 60
+            },
+            bgmEnabled: true,
+            sfxEnabled: true,
+            bgmVolume: 0.4,
+            sfxVolume: 0.7,
+            audioCtx: null,
+            bgmInterval: null
+        };
+
+        let activeSetupTabIndex = 0;
+
+        /* ==========================================================================
+           BILINGUAL UI SUPPORT (BAHASA INDONESIA & ENGLISH)
+           ========================================================================== */
+        const UI_TRANSLATIONS = {
+            id: {
+                langCode: 'ID',
+                navGuide: 'Panduan',
+                navAudio: 'Audio',
+                navAbout: 'Tentang',
+                menuBadge: '🇮🇩 Game Edukasi Sejarah Masa Orde Baru (1966 - 1998)',
+                menuTitle: 'Petualangan Ular Tangga <span class="gold-gradient-text">3D Interaktif</span>',
+                menuDesc: 'Uji pengetahuan sejarah Indonesia era Orde Baru! Hadapi dinamika awal Orde Baru, Repelita & Swasembada Pangan, fusi partai politik, dwifungsi ABRI, kebijakan ekonomi, hingga krisis moneter dan Reformasi 1998 di papan 3D interaktif.',
+                menuStart: 'Mulai Petualangan',
+                menuGuide: 'Panduan Main',
+                menuAudio: 'Pengaturan',
+                menuAbout: 'Info Proyek',
+                setupTitle: '<i class="fa-solid fa-users-gear text-amber-400"></i> Pengaturan Permainan & Karakter',
+                setupSub: 'Pilih mode bermain dan kustomisasi avatar 3D pemain Anda (Hingga 6 Pemain)',
+                modeMultiTitle: 'Multiplayer Lokal',
+                modeMultiDesc: 'Main 2 hingga 6 pemain secara bergantian dalam 1 perangkat',
+                modeAITitle: 'Pemain vs Komputer (AI)',
+                modeAIDesc: 'Tantang lawan AI (hingga 6 peserta) dengan Easy, Normal, atau Hard',
+                playerCountLabel: 'Jumlah Peserta:',
+                playerUnit: 'Pemain',
+                rollBtn: 'LEMPAR DADU 3D',
+                cameraHint: 'Seret layar untuk memutar kamera 3D • Scroll/Cubit untuk Zoom'
+            },
+            en: {
+                langCode: 'EN',
+                navGuide: 'Guide',
+                navAudio: 'Audio',
+                navAbout: 'About',
+                menuBadge: '🇮🇩 Indonesian New Order History Educational Game (1966 - 1998)',
+                menuTitle: 'Interactive 3D <span class="gold-gradient-text">Snakes & Ladders</span>',
+                menuDesc: 'Test your knowledge of Indonesia’s New Order era! Experience early New Order stability, Repelita & Rice Self-Sufficiency, party fusion, ABRI dual-function, economic policies, and the 1998 Reformation on an interactive 3D board.',
+                menuStart: 'Start Adventure',
+                menuGuide: 'How to Play',
+                menuAudio: 'Settings',
+                menuAbout: 'About Project',
+                setupTitle: '<i class="fa-solid fa-users-gear text-amber-400"></i> Game & Character Setup',
+                setupSub: 'Choose game mode and customize your 3D player avatars (Up to 6 Players)',
+                modeMultiTitle: 'Local Multiplayer',
+                modeMultiDesc: 'Play with 2 to 6 players taking turns on one device',
+                modeAITitle: 'Player vs Computer (AI)',
+                modeAIDesc: 'Challenge smart AI bots (up to 6 participants) on Easy, Normal, or Hard',
+                playerCountLabel: 'Players:',
+                playerUnit: 'Players',
+                rollBtn: 'ROLL 3D DICE',
+                cameraHint: 'Drag screen to orbit 3D camera • Scroll/Pinch to Zoom'
+            }
+        };
+
+        function toggleLanguage() {
+            playClickSound();
+            gameState.lang = gameState.lang === 'id' ? 'en' : 'id';
+            applyLanguageUI();
+        }
+
+        function applyLanguageUI() {
+            const t = UI_TRANSLATIONS[gameState.lang];
+            document.getElementById('langLabel').innerText = t.langCode;
+            document.getElementById('navGuideText').innerText = t.navGuide;
+            document.getElementById('navAudioText').innerText = t.navAudio;
+            document.getElementById('navAboutText').innerText = t.navAbout;
+
+            document.getElementById('menuBadgeText').innerText = t.menuBadge;
+            document.getElementById('menuTitleText').innerHTML = t.menuTitle;
+            document.getElementById('menuDescText').innerText = t.menuDesc;
+            document.querySelector('#menuStartBtn span').innerText = t.menuStart;
+            document.querySelector('#menuGuideBtn span').innerText = t.menuGuide;
+            document.querySelector('#menuAudioBtn span').innerText = t.menuAudio;
+            document.querySelector('#menuAboutBtn span').innerText = t.menuAbout;
+
+            document.getElementById('setupTitleText').innerHTML = t.setupTitle;
+            document.getElementById('setupSubText').innerText = t.setupSub;
+            document.getElementById('modeMultiTitle').innerText = t.modeMultiTitle;
+            document.getElementById('modeMultiDesc').innerText = t.modeMultiDesc;
+            document.getElementById('modeAITitle').innerText = t.modeAITitle;
+            document.getElementById('modeAIDesc').innerText = t.modeAIDesc;
+            document.getElementById('playerCountLabel').innerText = t.playerCountLabel;
+
+            [2, 3, 4, 5, 6].forEach(c => {
+                const btn = document.getElementById(`pCount${c}`);
+                if (btn) btn.innerText = `${c} ${t.playerUnit}`;
+            });
+
+            const rollBtn = document.getElementById('rollDiceBtn');
+            if (rollBtn) rollBtn.innerHTML = `<i class="fa-solid fa-dice text-2xl"></i> ${t.rollBtn}`;
+        }
+
+        /* ==========================================================================
+           3. AUDIO ENGINE (WEB AUDIO API SYNTHESIZER)
+           ========================================================================== */
+        function initAudioContext() {
+            if (!gameState.audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                gameState.audioCtx = new AudioContext();
+            }
+            if (gameState.audioCtx.state === 'suspended') {
+                gameState.audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, type, duration, volMultiplier = 1) {
+            if (!gameState.sfxEnabled) return;
+            try {
+                initAudioContext();
+                const ctx = gameState.audioCtx;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = type || 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+                const vol = gameState.sfxVolume * volMultiplier;
+                gain.gain.setValueAtTime(vol, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {
+                console.warn("Audio play error", e);
+            }
+        }
+
+        function playClickSound() {
+            playTone(600, 'sine', 0.08, 0.5);
+        }
+
+        function playRollSound() {
+            if (!gameState.sfxEnabled) return;
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    playTone(200 + Math.random() * 300, 'triangle', 0.05, 0.6);
+                }, i * 60);
+            }
+        }
+
+        function playStepSound() {
+            playTone(320, 'sine', 0.1, 0.4);
+        }
+
+        function playCorrectSound() {
+            if (!gameState.sfxEnabled) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((freq, idx) => {
+                setTimeout(() => {
+                    playTone(freq, 'triangle', 0.25, 0.8);
+                }, idx * 100);
+            });
+        }
+
+        function playWrongSound() {
+            if (!gameState.sfxEnabled) return;
+            playTone(180, 'sawtooth', 0.3, 0.8);
+            setTimeout(() => {
+                playTone(130, 'sawtooth', 0.4, 0.8);
+            }, 150);
+        }
+
+        function playEscalatorSound() {
+            if (!gameState.sfxEnabled) return;
+            initAudioContext();
+            const ctx = gameState.audioCtx;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 1.2);
+
+            gain.gain.setValueAtTime(gameState.sfxVolume * 0.7, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.2);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 1.2);
+        }
+
+        function playSnakeSound() {
+            if (!gameState.sfxEnabled) return;
+            initAudioContext();
+            const ctx = gameState.audioCtx;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 1.2);
+
+            gain.gain.setValueAtTime(gameState.sfxVolume * 0.6, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.2);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 1.2);
+        }
+
+        function playVictorySound() {
+            if (!gameState.sfxEnabled) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => {
+                    playTone(freq, 'triangle', 0.4, 0.9);
+                }, idx * 120);
+            });
+        }
+
+        // Ambient BGM Synthesizer Loop
+        function startBGMLoop() {
+            if (gameState.bgmInterval) clearInterval(gameState.bgmInterval);
+            if (!gameState.bgmEnabled) return;
+
+            const scale = [261.63, 293.66, 329.63, 392.00, 440.00]; // Pentatonic C D E G A
+            let step = 0;
+
+            gameState.bgmInterval = setInterval(() => {
+                if (!gameState.bgmEnabled || !gameState.gameActive || gameState.isPaused) return;
+                const freq = scale[step % scale.length];
+                playTone(freq, 'sine', 0.4, gameState.bgmVolume * 0.3);
+                step++;
+            }, 600);
+        }
+
+        function toggleBGM(enabled) {
+            gameState.bgmEnabled = enabled;
+            if (enabled) {
+                startBGMLoop();
+            } else if (gameState.bgmInterval) {
+                clearInterval(gameState.bgmInterval);
+            }
+        }
+
+        function toggleSFX(enabled) {
+            gameState.sfxEnabled = enabled;
+        }
+
+        function updateBGMVolume(val) {
+            gameState.bgmVolume = parseFloat(val);
+        }
+
+        function updateSFXVolume(val) {
+            gameState.sfxVolume = parseFloat(val);
+        }
+
+        /* ==========================================================================
+           4. AVATAR 2D PREVIEW GENERATOR
+           ========================================================================== */
+        function drawAvatarPreview(canvasId, pConfig) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Background Circle
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2, w / 2 - 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = pConfig.color || '#f59e0b';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Outfit Torso / Base
+            ctx.fillStyle = pConfig.color || '#ef4444';
+            ctx.beginPath();
+            ctx.ellipse(w / 2, h + 10, w / 2 - 12, h / 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head / Skin
+            ctx.fillStyle = pConfig.skinColor || '#f8d5c2';
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2 - 4, 26, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair / Headgear
+            ctx.fillStyle = '#0f172a';
+            const hairType = pConfig.hairStyle || 'peci';
+
+            if (hairType === 'peci') {
+                // Black Kopiah / Peci
+                ctx.fillStyle = '#1e1e1e';
+                ctx.fillRect(w / 2 - 24, h / 2 - 32, 48, 18);
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2 - 30, 24, Math.PI, 0);
+                ctx.fill();
+            } else if (hairType === 'warrior') {
+                // Pejuang Red-White Bandana / Hat
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(w / 2 - 27, h / 2 - 28, 54, 12);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(w / 2 - 27, h / 2 - 18, 54, 4);
+            } else if (hairType === 'short') {
+                // Short hair cap
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2 - 8, 28, Math.PI, Math.PI * 2);
+                ctx.fill();
+            } else if (hairType === 'long') {
+                // Long hair sides
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2 - 4, 30, Math.PI * 0.8, Math.PI * 2.2);
+                ctx.fill();
+            } else if (hairType === 'bun') {
+                // Bun on top
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2 - 32, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Eyes
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(w / 2 - 9, h / 2 - 4, 3, 0, Math.PI * 2);
+            ctx.arc(w / 2 + 9, h / 2 - 4, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Smile
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2 + 4, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#0f172a';
+            ctx.stroke();
+
+            // Accessories
+            if (pConfig.accessory === 'glasses') {
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(w / 2 - 9, h / 2 - 4, 7, 0, Math.PI * 2);
+                ctx.arc(w / 2 + 9, h / 2 - 4, 7, 0, Math.PI * 2);
+                ctx.moveTo(w / 2 - 2, h / 2 - 4);
+                ctx.lineTo(w / 2 + 2, h / 2 - 4);
+                ctx.stroke();
+            } else if (pConfig.accessory === 'scarf') {
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(w / 2 - 20, h / 2 + 18, 40, 8);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(w / 2 - 20, h / 2 + 26, 40, 4);
+            }
+        }
+
+        /* ==========================================================================
+           MODAL & SCREEN NAVIGATION HELPERS
+           ========================================================================== */
+        function openModal(modalId) {
+            playClickSound();
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            playClickSound();
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function goToMenu() {
+            playClickSound();
+            gameState.gameActive = false;
+            gameState.isPaused = false;
+            gameState.isDiceRolling = false;
+            gameState.isMoving = false;
+            if (gameState.bgmInterval) clearInterval(gameState.bgmInterval);
+
+            ['questionModal', 'victoryModal', 'guideModal', 'audioModal', 'aboutModal'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('menuScreen').classList.remove('hidden');
+        }
+
+        function startSetup() {
+            playClickSound();
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('setupScreen').classList.remove('hidden');
+
+            activeSetupTabIndex = 0;
+            ensurePlayersInitialized();
+            renderSetupTabs();
+        }
+
+        function ensurePlayersInitialized() {
+            const defaultColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899'];
+            const defaultSkins = ['#f8d5c2', '#d2996c', '#ffe0bd', '#7c4d30', '#f8d5c2', '#d2996c'];
+            const defaultHairs = ['peci', 'short', 'warrior', 'long', 'bun', 'peci'];
+            const defaultAccs = ['badge', 'glasses', 'scarf', 'none', 'badge', 'glasses'];
+
+            const existing = gameState.players || [];
+            const nextPlayers = [];
+
+            for (let i = 0; i < gameState.playerCount; i++) {
+                const prev = existing[i];
+                const shouldBeAI = gameState.mode === 'ai' && i > 0;
+                nextPlayers.push({
+                    id: i + 1,
+                    name: prev && !prev.name.startsWith('AI Bot') && !prev.name.startsWith('Pemain ')
+                        ? prev.name
+                        : (shouldBeAI ? `AI Bot ${i}` : `Pemain ${i + 1}`),
+                    color: prev ? prev.color : defaultColors[i % defaultColors.length],
+                    skinColor: prev ? prev.skinColor : defaultSkins[i % defaultSkins.length],
+                    hairStyle: prev ? prev.hairStyle : defaultHairs[i % defaultHairs.length],
+                    accessory: prev ? prev.accessory : defaultAccs[i % defaultAccs.length],
+                    isAI: shouldBeAI,
+                    position: 1,
+                    score: 0,
+                    correctAnswers: 0,
+                    wrongAnswers: 0
+                });
+            }
+
+            gameState.players = nextPlayers;
+            if (activeSetupTabIndex >= gameState.players.length) {
+                activeSetupTabIndex = 0;
+            }
+        }
+
+        function setGameMode(mode) {
+            playClickSound();
+            gameState.mode = mode;
+
+            const multiCard = document.getElementById('modeMulti');
+            const aiCard = document.getElementById('modeVsAI');
+            const aiDiffCont = document.getElementById('aiDifficultyContainer');
+
+            if (mode === 'multi') {
+                multiCard.className = 'p-4 rounded-2xl bg-slate-800/90 border-2 border-amber-500 cursor-pointer transition flex items-center gap-4';
+                aiCard.className = 'p-4 rounded-2xl bg-slate-800/50 border-2 border-slate-700 cursor-pointer transition flex items-center gap-4 hover:border-slate-500';
+                aiDiffCont.classList.add('hidden');
+            } else {
+                aiCard.className = 'p-4 rounded-2xl bg-slate-800/90 border-2 border-amber-500 cursor-pointer transition flex items-center gap-4';
+                multiCard.className = 'p-4 rounded-2xl bg-slate-800/50 border-2 border-slate-700 cursor-pointer transition flex items-center gap-4 hover:border-slate-500';
+                aiDiffCont.classList.remove('hidden');
+            }
+
+            ensurePlayersInitialized();
+            renderSetupTabs();
+        }
+
+        function setPlayerCount(count) {
+            playClickSound();
+            gameState.playerCount = count;
+
+            [2, 3, 4, 5, 6].forEach(c => {
+                const btn = document.getElementById(`pCount${c}`);
+                if (!btn) return;
+                btn.className = (c === count)
+                    ? 'px-3.5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm'
+                    : 'px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700';
+            });
+
+            ensurePlayersInitialized();
+            renderSetupTabs();
+        }
+
+        function updateAIDifficulty() {
+            const sel = document.getElementById('aiDifficultySelect');
+            if (sel) gameState.aiDifficulty = sel.value;
+            loadPlayerConfigToForm(activeSetupTabIndex);
+        }
+
+        function renderSetupTabs() {
+            const tabsContainer = document.getElementById('playerTabs');
+            tabsContainer.innerHTML = '';
+
+            gameState.players.forEach((p, idx) => {
+                const tabBtn = document.createElement('button');
+                tabBtn.onclick = () => selectSetupTab(idx);
+                tabBtn.className = idx === activeSetupTabIndex
+                    ? 'px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs whitespace-nowrap'
+                    : 'px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs whitespace-nowrap hover:bg-slate-700';
+                tabBtn.innerHTML = `${p.isAI ? '🤖 ' : '👤 '}${p.name}`;
+                tabsContainer.appendChild(tabBtn);
+            });
+
+            loadPlayerConfigToForm(activeSetupTabIndex);
+        }
+
+        function selectSetupTab(idx) {
+            playClickSound();
+            activeSetupTabIndex = idx;
+            renderSetupTabs();
+        }
+
+        function loadPlayerConfigToForm(idx) {
+            const p = gameState.players[idx];
+            if (!p) return;
+
+            document.getElementById('custName').value = p.name;
+            document.getElementById('custColor').value = p.color;
+            document.getElementById('custColorHex').innerText = p.color;
+            document.getElementById('custSkin').value = p.skinColor;
+            document.getElementById('custHair').value = p.hairStyle;
+            document.getElementById('custAccessory').value = p.accessory;
+            document.getElementById('custType').value = p.isAI ? `Komputer (AI - ${gameState.aiDifficulty.toUpperCase()})` : 'Pemain Manusia';
+
+            document.getElementById('previewNameTag').innerText = p.name;
+            document.getElementById('previewStyleTag').innerText = `${p.hairStyle.toUpperCase()} • Pawn`;
+
+            drawAvatarPreview('avatarPreviewCanvas', p);
+        }
+
+        function updateCurrentPlayerConfig() {
+            const p = gameState.players[activeSetupTabIndex];
+            if (!p) return;
+
+            p.name = document.getElementById('custName').value || `Pemain ${p.id}`;
+            p.color = document.getElementById('custColor').value;
+            p.skinColor = document.getElementById('custSkin').value;
+            p.hairStyle = document.getElementById('custHair').value;
+            p.accessory = document.getElementById('custAccessory').value;
+
+            document.getElementById('custColorHex').innerText = p.color;
+            document.getElementById('previewNameTag').innerText = p.name;
+
+            drawAvatarPreview('avatarPreviewCanvas', p);
+            renderSetupTabs();
+        }
+
+        /* ==========================================================================
+           7. GAME LAUNCH & HUD UPDATES
+           ========================================================================== */
+        function launch3DGame() {
+            playClickSound();
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            gameState.gameActive = true;
+            gameState.activePlayerIndex = 0;
+            gameState.isDiceRolling = false;
+            gameState.isMoving = false;
+            gameState.isPaused = false;
+            gameState.askedQuestionIds.clear();
+
+            // Reset scores & positions
+            gameState.players.forEach(p => {
+                p.position = 1;
+                p.score = 0;
+                p.correctAnswers = 0;
+                p.wrongAnswers = 0;
+            });
+
+            // Init 3D Canvas Scene
+            initThreeScene();
+
+            // Update HUD
+            updateGameHUD();
+
+            // Start BGM
+            startBGMLoop();
+
+            // Check if First Player is AI
+            checkAITurn();
+        }
+
+        function updateGameHUD() {
+            const activeP = gameState.players[gameState.activePlayerIndex];
+            
+            // Top active player badge
+            const activeBadge = document.getElementById('activePlayerAvatarBadge');
+            activeBadge.style.backgroundColor = activeP.color;
+            activeBadge.innerText = activeP.isAI ? 'AI' : `P${activeP.id}`;
+            document.getElementById('activePlayerNameHUD').innerText = activeP.name;
+
+            // Player List HUD
+            const listCont = document.getElementById('playerListHUD');
+            listCont.innerHTML = '';
+
+            gameState.players.forEach((p, idx) => {
+                const card = document.createElement('div');
+                const isActive = idx === gameState.activePlayerIndex;
+                card.className = `glass-panel p-3 rounded-2xl border transition flex items-center gap-3 ${isActive ? 'active-turn-card border-amber-400 bg-slate-900/90' : 'border-slate-800 opacity-80'}`;
+
+                card.innerHTML = `
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-slate-950 text-xs shrink-0" style="background-color: ${p.color}">
+                        ${p.isAI ? '🤖' : `P${p.id}`}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center mb-0.5">
+                            <h5 class="text-xs font-bold text-white truncate">${p.name}</h5>
+                            <span class="text-[10px] font-extrabold text-amber-400">${p.score} Pts</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden flex">
+                            <div class="bg-amber-400 h-full transition-all duration-300" style="width: ${p.position}%"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                            <span>Petak <b>${p.position}</b>/100</span>
+                            <span>✓${p.correctAnswers} • ✕${p.wrongAnswers}</span>
+                        </div>
+                    </div>
+                `;
+                listCont.appendChild(card);
+            });
+
+            const rollBtn = document.getElementById('rollDiceBtn');
+            if (rollBtn) {
+                const disabled = !gameState.gameActive || gameState.isPaused || gameState.isDiceRolling || gameState.isMoving || activeP.isAI;
+                rollBtn.disabled = disabled;
+                rollBtn.classList.toggle('opacity-50', disabled);
+                rollBtn.classList.toggle('cursor-not-allowed', disabled);
+            }
+        }
+
+        /* ==========================================================================
+           5. THREE.JS 3D SCENE INITIALIZATION & ATMOSPHERE (PAGI, SORE, MALAM)
+           ========================================================================== */
+        let threeApp = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            controls: null,
+            boardGroup: null,
+            pawns: [],
+            diceMesh: null,
+            tileCoords: {},
+            animatedSnakes: [],
+            animatedLifts: [],
+            skyDome: null,
+            sunMesh: null,
+            ambientLight: null,
+            dirLight: null,
+            fillLight: null,
+            lampBulbs: [],
+            starSystem: null
+        };
+
+        function createSkyDomeMesh() {
+            const skyGeo = new THREE.SphereGeometry(140, 32, 24);
+            const skyMat = new THREE.ShaderMaterial({
+                side: THREE.BackSide,
+                depthWrite: false,
+                uniforms: {
+                    topColor: { value: new THREE.Color(0x1e1b4b) },
+                    midColor: { value: new THREE.Color(0xe11d48) },
+                    bottomColor: { value: new THREE.Color(0xfbbf24) }
+                },
+                vertexShader: `
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                        vWorldPosition = worldPosition.xyz;
+                        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 topColor;
+                    uniform vec3 midColor;
+                    uniform vec3 bottomColor;
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        float h = normalize(vWorldPosition).y;
+                        vec3 col = mix(bottomColor, midColor, smoothstep(-0.1, 0.25, h));
+                        col = mix(col, topColor, smoothstep(0.22, 0.75, h));
+                        gl_FragColor = vec4(col, 1.0);
+                    }
+                `
+            });
+            const dome = new THREE.Mesh(skyGeo, skyMat);
+            threeApp.scene.add(dome);
+            threeApp.skyDome = dome;
+        }
+
+        function createStarfieldMesh() {
+            const starCount = 450;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI * 0.42;
+                const r = 115;
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = Math.max(8, r * Math.cos(phi));
+                positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+            }
+            const starGeo = new THREE.BufferGeometry();
+            starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xfef9c3, size: 0.85, transparent: true, opacity: 0.9 });
+            const stars = new THREE.Points(starGeo, starMat);
+            stars.visible = false;
+            threeApp.scene.add(stars);
+            threeApp.starSystem = stars;
+        }
+
+        function setWeatherMode(mode, silent = false) {
+            if (!silent) playClickSound();
+            gameState.weatherMode = mode;
+
+            const labels = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
+            const labelEl = document.getElementById('modalWeatherLabel');
+            if (labelEl) labelEl.innerText = labels[mode] || 'Sore';
+
+            ['pagi', 'sore', 'malam'].forEach(m => {
+                const cap = m.charAt(0).toUpperCase() + m.slice(1);
+                const btn = document.getElementById(`weatherBtn${cap}`);
+                if (btn) {
+                    btn.className = (m === mode)
+                        ? 'px-2 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold transition text-center'
+                        : 'px-2 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-center';
+                }
+
+                const modalBtn = document.getElementById(`modalWeatherBtn${cap}`);
+                if (modalBtn) {
+                    modalBtn.className = (m === mode)
+                        ? 'px-3 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold transition text-xs text-center'
+                        : 'px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-xs text-center';
+                }
+            });
+
+            if (!threeApp.scene) return;
+
+            const presets = {
+                pagi: {
+                    bg: 0x7dd3fc,
+                    fogColor: 0xbae6fd,
+                    top: 0x0284c7,
+                    mid: 0x7dd3fc,
+                    bottom: 0xfef08a,
+                    sunColor: 0xfef08a,
+                    sunPos: [-24, 22, -22],
+                    ambientColor: 0xf0f9ff,
+                    ambientInt: 0.92,
+                    dirColor: 0xfffbeb,
+                    dirInt: 1.35,
+                    lampEmissive: 0.1,
+                    stars: false
+                },
+                sore: {
+                    bg: 0xf97316,
+                    fogColor: 0xfb923c,
+                    top: 0x1e1b4b,
+                    mid: 0xe11d48,
+                    bottom: 0xfbbf24,
+                    sunColor: 0xfef08a,
+                    sunPos: [-34, 8.5, -52],
+                    ambientColor: 0xffedd5,
+                    ambientInt: 0.78,
+                    dirColor: 0xfbbf24,
+                    dirInt: 1.45,
+                    lampEmissive: 0.85,
+                    stars: false
+                },
+                malam: {
+                    bg: 0x090d16,
+                    fogColor: 0x0f172a,
+                    top: 0x020617,
+                    mid: 0x0f172a,
+                    bottom: 0x1e293b,
+                    sunColor: 0xf8fafc,
+                    sunPos: [26, 20, -35],
+                    ambientColor: 0x64748b,
+                    ambientInt: 0.55,
+                    dirColor: 0x93c5fd,
+                    dirInt: 0.75,
+                    lampEmissive: 1.8,
+                    stars: true
+                }
+            };
+
+            const cfg = presets[mode] || presets.sore;
+            threeApp.scene.background = new THREE.Color(cfg.bg);
+            threeApp.scene.fog = new THREE.FogExp2(cfg.fogColor, 0.01);
+
+            if (threeApp.skyDome && threeApp.skyDome.material && threeApp.skyDome.material.uniforms) {
+                threeApp.skyDome.material.uniforms.topColor.value.setHex(cfg.top);
+                threeApp.skyDome.material.uniforms.midColor.value.setHex(cfg.mid);
+                threeApp.skyDome.material.uniforms.bottomColor.value.setHex(cfg.bottom);
+            }
+
+            if (threeApp.sunMesh) {
+                threeApp.sunMesh.material.color.setHex(cfg.sunColor);
+                threeApp.sunMesh.position.set(...cfg.sunPos);
+            }
+            if (threeApp.ambientLight) {
+                threeApp.ambientLight.color.setHex(cfg.ambientColor);
+                threeApp.ambientLight.intensity = cfg.ambientInt;
+            }
+            if (threeApp.dirLight) {
+                threeApp.dirLight.color.setHex(cfg.dirColor);
+                threeApp.dirLight.intensity = cfg.dirInt;
+                threeApp.dirLight.position.set(...cfg.sunPos);
+            }
+            if (threeApp.lampBulbs) {
+                threeApp.lampBulbs.forEach(bulb => {
+                    if (bulb.material) bulb.material.emissiveIntensity = cfg.lampEmissive;
+                });
+            }
+            if (threeApp.starSystem) {
+                threeApp.starSystem.visible = cfg.stars;
+            }
+        }
+
+        function initThreeScene() {
+            const container = document.getElementById('threeCanvasContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            threeApp.lampBulbs = [];
+            threeApp.animatedSnakes = [];
+            threeApp.animatedLifts = [];
+            threeApp.pawns = [];
+
+            const width = Math.max(300, container.clientWidth || window.innerWidth);
+            const height = Math.max(300, container.clientHeight || (window.innerHeight - 80));
+
+            const scene = new THREE.Scene();
+            threeApp.scene = scene;
+
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 19, 21);
+            threeApp.camera = camera;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            threeApp.renderer = renderer;
+
+            if (typeof THREE.OrbitControls === 'function') {
+                const controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.06;
+                controls.maxPolarAngle = Math.PI / 2.05;
+                controls.minDistance = 6;
+                controls.maxDistance = 48;
+                controls.target.set(0, 0, 0);
+                controls.update();
+                threeApp.controls = controls;
+            }
+
+            const ambientLight = new THREE.AmbientLight(0xffedd5, 0.78);
+            scene.add(ambientLight);
+            threeApp.ambientLight = ambientLight;
+
+            const dirLight = new THREE.DirectionalLight(0xfbbf24, 1.45);
+            dirLight.position.set(-22, 14, -24);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+            threeApp.dirLight = dirLight;
+
+            const fillLight = new THREE.DirectionalLight(0x60a5fa, 0.45);
+            fillLight.position.set(16, 12, 16);
+            scene.add(fillLight);
+            threeApp.fillLight = fillLight;
+
+            createSkyDomeMesh();
+            createStarfieldMesh();
+
+            const sunMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(5.5, 20, 20),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a, fog: false })
+            );
+            sunMesh.position.set(-34, 8.5, -52);
+            scene.add(sunMesh);
+            threeApp.sunMesh = sunMesh;
+
+            buildLowPolyIslandEnvironment();
+            build3DBoard();
+            buildEscalatorsAndLifts();
+            buildVariedSnakes();
+            build3DDice();
+            buildPlayerPawns();
+
+            setWeatherMode(gameState.weatherMode || 'sore', true);
+
+            window.addEventListener('resize', () => {
+                if (!threeApp.camera || !threeApp.renderer || !container) return;
+                const w = Math.max(300, container.clientWidth || window.innerWidth);
+                const h = Math.max(300, container.clientHeight || (window.innerHeight - 80));
+                threeApp.camera.aspect = w / h;
+                threeApp.camera.updateProjectionMatrix();
+                threeApp.renderer.setSize(w, h);
+            });
+
+            animateThreeScene();
+        }
+
+        /* ==========================================================================
+           6. 3D BOARD, ENVIRONMENT, SNAKES, ESCALATORS, DICE & PAWNS
+           ========================================================================== */
+        function createTileTexture(num, bgColor, isGoal = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, 256, 256);
+
+            ctx.strokeStyle = isGoal ? '#b45309' : 'rgba(15, 23, 42, 0.25)';
+            ctx.lineWidth = isGoal ? 12 : 6;
+            ctx.strokeRect(6, 6, 244, 244);
+
+            ctx.fillStyle = isGoal ? '#78350f' : '#0f172a';
+            ctx.font = num === 100 ? '900 76px Montserrat, sans-serif' : '800 84px Montserrat, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(num), 128, isGoal ? 105 : 128);
+
+            if (num === 1) {
+                ctx.font = 'bold 28px Inter, sans-serif';
+                ctx.fillStyle = '#047857';
+                ctx.fillText('START', 128, 198);
+            } else if (num === 100) {
+                ctx.font = 'bold 30px Inter, sans-serif';
+                ctx.fillStyle = '#92400e';
+                ctx.fillText('FINISH', 128, 185);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = 4;
+            return tex;
+        }
+
+        function getTileCenterWorld(tileNum, tileSize = 1.4, gap = 0.08) {
+            const idx = tileNum - 1;
+            const rowFromBottom = Math.floor(idx / 10);
+            const colInRow = idx % 10;
+            const col = (rowFromBottom % 2 === 0) ? colInRow : (9 - colInRow);
+            const rowFromTop = 9 - rowFromBottom;
+
+            const step = tileSize + gap;
+            const totalSpan = 10 * step - gap;
+            const x = -totalSpan / 2 + tileSize / 2 + col * step;
+            const z = -totalSpan / 2 + tileSize / 2 + rowFromTop * step;
+            return { x, y: 0.42, z };
+        }
+
+        function build3DBoard() {
+            if (threeApp.boardGroup) {
+                threeApp.scene.remove(threeApp.boardGroup);
+            }
+            const boardGroup = new THREE.Group();
+            threeApp.tileCoords = {};
+
+            const tileSize = 1.4;
+            const gap = 0.08;
+            const boardSpan = 10 * (tileSize + gap) - gap;
+            const frameThickness = 0.55;
+
+            // Base & wooden frame
+            const baseMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(boardSpan + frameThickness * 2, 0.4, boardSpan + frameThickness * 2),
+                new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 })
+            );
+            baseMesh.position.y = 0.05;
+            baseMesh.receiveShadow = true;
+            boardGroup.add(baseMesh);
+
+            const palette = ['#fef3c7', '#dcfce7', '#e0f2fe', '#fce7f3', '#ede9fe', '#ffedd5'];
+
+            for (let n = 1; n <= 100; n++) {
+                const pos = getTileCenterWorld(n, tileSize, gap);
+                threeApp.tileCoords[n] = pos;
+
+                const isGoal = n === 100;
+                const colorHex = isGoal ? '#facc15' : palette[(n * 7 + Math.floor(n / 10)) % palette.length];
+                const tex = createTileTexture(n, colorHex, isGoal);
+
+                const tileMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(tileSize, 0.24, tileSize),
+                    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.45 })
+                );
+                tileMesh.position.set(pos.x, 0.3, pos.z);
+                tileMesh.castShadow = true;
+                tileMesh.receiveShadow = true;
+                boardGroup.add(tileMesh);
+            }
+
+            threeApp.scene.add(boardGroup);
+            threeApp.boardGroup = boardGroup;
+        }
+
+        function buildEscalatorsAndLifts() {
+            threeApp.animatedLifts = [];
+            Object.entries(gameState.escalators).forEach(([startStr, endStr]) => {
+                const startTile = Number(startStr);
+                const endTile = Number(endStr);
+                const p1 = threeApp.tileCoords[startTile];
+                const p2 = threeApp.tileCoords[endTile];
+                if (!p1 || !p2) return;
+
+                const startVec = new THREE.Vector3(p1.x, p1.y + 0.06, p1.z);
+                const endVec = new THREE.Vector3(p2.x, p2.y + 0.14, p2.z);
+                const dir = new THREE.Vector3().subVectors(endVec, startVec);
+                const length = dir.length();
+                const mid = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
+
+                const escGroup = new THREE.Group();
+                escGroup.position.copy(mid);
+
+                const up = new THREE.Vector3(0, 1, 0);
+                const quat = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+                escGroup.quaternion.copy(quat);
+
+                const track = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.46, length, 0.14),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.4 })
+                );
+                escGroup.add(track);
+
+                [-0.22, 0.22].forEach(rx => {
+                    const rail = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.035, 0.035, length, 8),
+                        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.6, roughness: 0.3 })
+                    );
+                    rail.position.set(rx, 0, 0.14);
+                    escGroup.add(rail);
+                });
+
+                const steps = [];
+                const stepCount = 6;
+                for (let i = 0; i < stepCount; i++) {
+                    const stepMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.34, 0.07, 0.08),
+                        new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 0.35 })
+                    );
+                    steps.push(stepMesh);
+                    escGroup.add(stepMesh);
+                }
+
+                threeApp.scene.add(escGroup);
+                threeApp.animatedLifts.push({ steps, length, phase: startTile * 0.4 });
+            });
+        }
+
+        function createSnakePatternTexture(colorA, colorB) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = colorA;
+            ctx.fillRect(0, 0, 128, 128);
+
+            ctx.fillStyle = colorB;
+            for (let y = 0; y < 128; y += 32) {
+                ctx.fillRect(0, y, 128, 16);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(8, 1);
+            return tex;
+        }
+
+        function buildVariedSnakes() {
+            threeApp.animatedSnakes = [];
+            const palettePairs = [
+                ['#ef4444', '#fef08a'],
+                ['#16a34a', '#fde047'],
+                ['#06b6d4', '#fda4af'],
+                ['#f97316', '#451a03'],
+                ['#8b5cf6', '#fde68a'],
+                ['#ec4899', '#fef9c3']
+            ];
+
+            Object.entries(gameState.snakes).forEach(([headStr, tailStr], idx) => {
+                const headTile = Number(headStr);
+                const tailTile = Number(tailStr);
+                const pHead = threeApp.tileCoords[headTile];
+                const pTail = threeApp.tileCoords[tailTile];
+                if (!pHead || !pTail) return;
+
+                const [colA, colB] = palettePairs[idx % palettePairs.length];
+            const tex = createSnakePatternTexture(colA, colB);
+
+            const startVec = new THREE.Vector3(pHead.x, pHead.y + 0.14, pHead.z);
+            const endVec = new THREE.Vector3(pTail.x, pTail.y + 0.08, pTail.z);
+
+            const snakeGroup = new THREE.Group();
+            threeApp.scene.add(snakeGroup);
+
+            function buildSnakeTubeFromOffsets(swayAmp, timePhase) {
+                const mid1 = new THREE.Vector3().lerpVectors(startVec, endVec, 0.33);
+                const mid2 = new THREE.Vector3().lerpVectors(startVec, endVec, 0.66);
+                const perp = new THREE.Vector3(-(endVec.z - startVec.z), 0, endVec.x - startVec.x).normalize();
+
+                mid1.addScaledVector(perp, 0.85 + Math.sin(timePhase) * swayAmp);
+                mid1.y += 0.25 + Math.cos(timePhase * 1.2) * 0.06;
+                mid2.addScaledVector(perp, -0.85 - Math.cos(timePhase) * swayAmp);
+                mid2.y += 0.15 + Math.sin(timePhase * 1.2) * 0.06;
+
+                const curve = new THREE.CatmullRomCurve3([startVec, mid1, mid2, endVec]);
+                return { curve, geo: new THREE.TubeGeometry(curve, 32, 0.16, 12, false) };
+            }
+
+            const initialTube = buildSnakeTubeFromOffsets(0, 0);
+            const bodyMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 });
+            const bodyMesh = new THREE.Mesh(initialTube.geo, bodyMat);
+            bodyMesh.castShadow = true;
+            snakeGroup.add(bodyMesh);
+
+            // Sculpted Snake Head facing forward along travel direction
+            const headGroup = new THREE.Group();
+            headGroup.position.copy(startVec);
+
+            const headMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.24, 16, 14),
+                new THREE.MeshStandardMaterial({ color: colA, roughness: 0.35 })
+            );
+            headMesh.scale.set(1.05, 0.85, 1.35);
+            headMesh.castShadow = true;
+            headGroup.add(headMesh);
+
+            const midInitial = initialTube.curve.getPoint(0.08);
+            const outwardDir = new THREE.Vector3().subVectors(startVec, midInitial);
+            outwardDir.y = 0;
+            if (outwardDir.lengthSq() < 0.0001) outwardDir.set(0, 0, 1);
+            outwardDir.normalize();
+
+            const rightAxis = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), outwardDir).normalize();
+            const basisMat = new THREE.Matrix4().makeBasis(rightAxis, new THREE.Vector3(0, 1, 0), outwardDir);
+            headGroup.quaternion.setFromRotationMatrix(basisMat);
+
+            // Eyes clearly on top-front (+Y, +Z), Mouth below eyes, Tongue sticking out from mouth
+            [-0.105, 0.105].forEach(ex => {
+                const eyeWhite = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.072, 12, 12),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff })
+                );
+                eyeWhite.position.set(ex, 0.15, 0.21);
+
+                const pupil = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.038, 10, 10),
+                    new THREE.MeshBasicMaterial({ color: 0x090d16 })
+                );
+                pupil.position.set(ex * 1.03, 0.165, 0.272);
+
+                headGroup.add(eyeWhite, pupil);
+            });
+
+            const mouth = new THREE.Mesh(
+                new THREE.BoxGeometry(0.21, 0.045, 0.05),
+                new THREE.MeshBasicMaterial({ color: 0x450a0a })
+            );
+            mouth.position.set(0, -0.02, 0.308);
+            headGroup.add(mouth);
+
+            const tongue = new THREE.Mesh(
+                new THREE.BoxGeometry(0.035, 0.016, 0.24),
+                new THREE.MeshBasicMaterial({ color: 0xf43f5e })
+            );
+            tongue.position.set(0, -0.045, 0.42);
+            headGroup.add(tongue);
+
+            headGroup.add(headMesh);
+            snakeGroup.add(headGroup);
+
+            threeApp.animatedSnakes.push({
+                group: snakeGroup,
+                bodyMesh,
+                headGroup,
+                tongue,
+                startVec,
+                endVec,
+                phase: idx * 1.1,
+                lastTubeUpdate: 0
+            });
+            });
+        }
+
+        function build3DDice() {
+            const diceGroup = new THREE.Group();
+            const cube = new THREE.Mesh(
+                new THREE.BoxGeometry(0.9, 0.9, 0.9),
+                new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25 })
+            );
+            cube.castShadow = true;
+            diceGroup.add(cube);
+
+            const pipMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const pipGeo = new THREE.SphereGeometry(0.08, 10, 10);
+            const pipOffsets = [
+                [0, 0, 0.46],
+                [-0.22, 0.22, 0.46],
+                [0.22, -0.22, 0.46],
+                [0.22, 0.22, -0.46],
+                [-0.22, -0.22, -0.46]
+            ];
+            pipOffsets.forEach(([px, py, pz]) => {
+                const pip = new THREE.Mesh(pipGeo, pipMat);
+                pip.position.set(px, py, pz);
+                diceGroup.add(pip);
+            });
+
+            diceGroup.position.set(7.6, 0.95, 7.6);
+            diceGroup.visible = false;
+            threeApp.scene.add(diceGroup);
+            threeApp.diceMesh = diceGroup;
+        }
+
+        function buildPlayerPawns() {
+            threeApp.pawns = [];
+            const startCoords = threeApp.tileCoords[1] || { x: -6.8, y: 0.42, z: 6.8 };
+
+            gameState.players.forEach((p, idx) => {
+                const pawnGroup = new THREE.Group();
+                const shirtMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.45 });
+                const skinMat = new THREE.MeshStandardMaterial({ color: p.skinColor, roughness: 0.55 });
+                const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+
+                // Torso
+                const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.36, 12), shirtMat);
+                torso.position.y = 0.36;
+                torso.castShadow = true;
+                pawnGroup.add(torso);
+
+                // Legs
+                [-0.08, 0.08].forEach(lx => {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.2, 8), pantsMat);
+                    leg.position.set(lx, 0.1, 0);
+                    pawnGroup.add(leg);
+                });
+
+                // Arms
+                [-0.22, 0.22].forEach(ax => {
+                    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.26, 8), shirtMat);
+                    arm.position.set(ax, 0.36, 0);
+                    arm.rotation.z = ax < 0 ? 0.2 : -0.2;
+                    pawnGroup.add(arm);
+                });
+
+                // Head
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14), skinMat);
+                head.position.y = 0.68;
+                head.castShadow = true;
+                pawnGroup.add(head);
+
+                // Eyes & Smile facing +Z
+                [-0.055, 0.055].forEach(ex => {
+                    const eye = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.025, 8, 8),
+                        new THREE.MeshBasicMaterial({ color: 0x0f172a })
+                    );
+                    eye.position.set(ex, 0.7, 0.145);
+                    pawnGroup.add(eye);
+                });
+
+                const mouth = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.07, 0.015, 0.02),
+                    new THREE.MeshBasicMaterial({ color: 0x7f1d1d })
+                );
+                mouth.position.set(0, 0.63, 0.15);
+                pawnGroup.add(mouth);
+
+                // Hair / Headgear
+                if (p.hairStyle === 'peci') {
+                    const peci = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.14, 0.15, 0.11, 14),
+                        new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6 })
+                    );
+                    peci.position.y = 0.84;
+                    pawnGroup.add(peci);
+                } else if (p.hairStyle === 'warrior') {
+                    const hat = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.2, 0.16, 14),
+                        new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.5 })
+                    );
+                    hat.position.y = 0.87;
+                    pawnGroup.add(hat);
+                } else if (p.hairStyle === 'bun') {
+                    const bun = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.08, 10, 10),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b })
+                    );
+                    bun.position.set(0, 0.88, -0.04);
+                    pawnGroup.add(bun);
+                } else {
+                    const hairCap = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.168, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b })
+                    );
+                    hairCap.position.y = 0.69;
+                    pawnGroup.add(hairCap);
+                }
+
+                // Accessories
+                if (p.accessory === 'scarf') {
+                    const scarf = new THREE.Mesh(
+                        new THREE.TorusGeometry(0.14, 0.035, 8, 16),
+                        new THREE.MeshStandardMaterial({ color: 0xdc2626 })
+                    );
+                    scarf.rotation.x = Math.PI / 2;
+                    scarf.position.y = 0.53;
+                    pawnGroup.add(scarf);
+                } else if (p.accessory === 'badge') {
+                    const badge = new THREE.Mesh(
+                        new THREE.OctahedronGeometry(0.055, 0),
+                        new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2 })
+                    );
+                    badge.position.set(0.08, 0.42, 0.17);
+                    pawnGroup.add(badge);
+                }
+
+                const angle = (idx / Math.max(1, gameState.players.length)) * Math.PI * 2;
+                const offsetR = gameState.players.length > 1 ? 0.28 : 0;
+                pawnGroup.position.set(
+                    startCoords.x + Math.cos(angle) * offsetR,
+                    startCoords.y + 0.1,
+                    startCoords.z + Math.sin(angle) * offsetR
+                );
+
+                threeApp.scene.add(pawnGroup);
+                threeApp.pawns.push({ playerId: p.id, mesh: pawnGroup });
+            });
+        }
+
+        function buildLowPolyIslandEnvironment() {
+            const island = new THREE.Mesh(
+                new THREE.CylinderGeometry(18, 22, 1.4, 24),
+                new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.85 })
+            );
+            island.position.y = -0.85;
+            island.receiveShadow = true;
+            threeApp.scene.add(island);
+
+            // Monas Monument Ornament
+            const monasGroup = new THREE.Group();
+            const base1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 2.2), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+            base1.position.y = 0.2;
+            const base2 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 1.5), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+            base2.position.y = 0.6;
+            const obelisk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 4.2, 12), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+            obelisk.position.y = 2.8;
+            const flame = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.65, 12), new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xf59e0b, emissiveIntensity: 0.4 }));
+            flame.position.y = 5.2;
+            monasGroup.add(base1, base2, obelisk, flame);
+            monasGroup.position.set(-10.5, -0.15, -9.5);
+            threeApp.scene.add(monasGroup);
+
+            // Surrounding Mountains, Houses, School & Trees
+            const mountainCoords = [
+                [-24, 0, -24, 7.5],
+                [-8, 0, -28, 9.0],
+                [10, 0, -27, 8.2],
+                [25, 0, -20, 7.0],
+                [-26, 0, -4, 6.8],
+                [26, 0, 4, 7.2]
+            ];
+            mountainCoords.forEach(([mx, , mz, radius]) => {
+                const height = radius * 1.15;
+                const cone = new THREE.Mesh(
+                    new THREE.ConeGeometry(radius, height, 7),
+                    new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 })
+                );
+                cone.position.set(mx, height / 2 - 1.2, mz);
+                threeApp.scene.add(cone);
+            });
+
+            // School Complex
+            const schoolGroup = new THREE.Group();
+            const schoolBody = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 1.6), new THREE.MeshStandardMaterial({ color: 0xfef9c3 }));
+            schoolBody.position.y = 0.6;
+            const schoolRoof = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0xb91c1c }));
+            schoolRoof.position.y = 1.32;
+            schoolGroup.add(schoolBody, schoolRoof);
+            schoolGroup.position.set(10.5, -0.15, -9.5);
+            threeApp.scene.add(schoolGroup);
+
+            // Second School Building & Courtyard Block
+            const school2Group = new THREE.Group();
+            const s2Body = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.1, 1.5), new THREE.MeshStandardMaterial({ color: 0xfef3c7 }));
+            s2Body.position.y = 0.55;
+            const s2Roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.22, 1.7), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+            s2Roof.position.y = 1.21;
+            const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+            flagPole.position.set(-1.1, 1.9, 0.65);
+            const flagCloth = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.04), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+            flagCloth.position.set(-0.82, 2.42, 0.65);
+            school2Group.add(s2Body, s2Roof, flagPole, flagCloth);
+            school2Group.position.set(12.2, -0.15, -5.8);
+            threeApp.scene.add(school2Group);
+
+            // Mosque (Masjid) with Main Dome, Side Dome & Minaret
+            const mosqueGroup = new THREE.Group();
+            const mosqueHall = new THREE.Mesh(
+                new THREE.BoxGeometry(2.8, 1.3, 2.2),
+                new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 })
+            );
+            mosqueHall.position.y = 0.65;
+            mosqueHall.castShadow = true;
+
+            const greenTrim = new THREE.Mesh(
+                new THREE.BoxGeometry(2.88, 0.16, 2.28),
+                new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4 })
+            );
+            greenTrim.position.y = 1.32;
+
+            const mainDome = new THREE.Mesh(
+                new THREE.SphereGeometry(0.85, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.55),
+                new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.35 })
+            );
+            mainDome.position.set(0, 1.32, 0);
+
+            const domeFinial = new THREE.Mesh(
+                new THREE.ConeGeometry(0.08, 0.35, 10),
+                new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.25 })
+            );
+            domeFinial.position.set(0, 2.28, 0);
+
+            const minaret = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.28, 3.1, 12),
+                new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.5 })
+            );
+            minaret.position.set(-1.65, 1.55, -0.75);
+
+            const minaretDome = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+                new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.35 })
+            );
+            minaretDome.position.set(-1.65, 3.08, -0.75);
+
+            mosqueGroup.add(mosqueHall, greenTrim, mainDome, domeFinial, minaret, minaretDome);
+            mosqueGroup.position.set(-11.2, -0.15, -3.2);
+            mosqueGroup.rotation.y = 0.35;
+            threeApp.scene.add(mosqueGroup);
+
+            // Multi-story City & Office Buildings
+            const cityBuildings = [
+                { x: 11.5, z: 0.5, w: 1.9, h: 3.4, d: 1.8, col: 0x94a3b8, win: 0xfef08a },
+                { x: 9.2, z: 12.2, w: 2.2, h: 2.6, d: 1.7, col: 0x64748b, win: 0xbae6fd },
+                { x: -12.4, z: 2.8, w: 1.8, h: 2.9, d: 1.8, col: 0xcbd5e1, win: 0xfde68a },
+                { x: -3.2, z: 12.6, w: 2.4, h: 2.2, d: 1.6, col: 0xe2e8f0, win: 0xfef08a }
+            ];
+            cityBuildings.forEach(b => {
+                const bGroup = new THREE.Group();
+                const tower = new THREE.Mesh(
+                    new THREE.BoxGeometry(b.w, b.h, b.d),
+                    new THREE.MeshStandardMaterial({ color: b.col, roughness: 0.55 })
+                );
+                tower.position.y = b.h / 2;
+                tower.castShadow = true;
+                bGroup.add(tower);
+
+                const roofCap = new THREE.Mesh(
+                    new THREE.BoxGeometry(b.w + 0.14, 0.16, b.d + 0.14),
+                    new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 })
+                );
+                roofCap.position.y = b.h + 0.06;
+                bGroup.add(roofCap);
+
+                // Simple window strips on front & back
+                for (let wy = 0.65; wy < b.h - 0.3; wy += 0.75) {
+                    const winStrip = new THREE.Mesh(
+                        new THREE.BoxGeometry(b.w * 0.75, 0.22, b.d + 0.06),
+                        new THREE.MeshStandardMaterial({ color: b.win, emissive: b.win, emissiveIntensity: 0.2 })
+                    );
+                    winStrip.position.y = wy;
+                    bGroup.add(winStrip);
+                }
+
+                bGroup.position.set(b.x, -0.15, b.z);
+                threeApp.scene.add(bGroup);
+            });
+
+            // Houses & Street Lamps
+            const houseCoords = [
+                [-11.5, 8.5, 0xf97316],
+                [-8.5, 10.5, 0x38bdf8],
+                [10.5, 9.5, 0xfacc15],
+                [12.0, 4.5, 0xa855f7]
+            ];
+            houseCoords.forEach(([hx, hz, roofCol]) => {
+                const hGroup = new THREE.Group();
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 1.4), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+                wall.position.y = 0.5;
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(1.25, 0.75, 4), new THREE.MeshStandardMaterial({ color: roofCol }));
+                roof.position.y = 1.35;
+                roof.rotation.y = Math.PI / 4;
+                hGroup.add(wall, roof);
+                hGroup.position.set(hx, -0.15, hz);
+                threeApp.scene.add(hGroup);
+            });
+
+            function createStreetLamp() {
+                const lampGroup = new THREE.Group();
+                const post = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.04, 0.06, 1.5, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 })
+                );
+                post.position.y = 0.75;
+
+                const bulb = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.14, 12, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfacc15, emissiveIntensity: 0.8 })
+                );
+                bulb.position.y = 1.55;
+                threeApp.lampBulbs.push(bulb);
+                lampGroup.add(post, bulb);
+                return lampGroup;
+            }
+
+            [[-7.8, 7.8], [7.8, -7.8], [-7.8, -7.8]].forEach(([lx, lz]) => {
+                const lamp = createStreetLamp();
+                lamp.position.set(lx, 0, lz);
+                threeApp.scene.add(lamp);
+            });
+        }
+
+        function setCameraView(mode) {
+            playClickSound();
+            gameState.cameraMode = mode;
+
+            ['iso', 'follow', 'top'].forEach(m => {
+                const btn = document.getElementById(`camBtn${m.charAt(0).toUpperCase() + m.slice(1)}`);
+                if (!btn) return;
+                btn.className = (m === mode)
+                    ? 'px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold transition'
+                    : 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            });
+
+            if (!threeApp.camera || !threeApp.controls) return;
+            if (mode === 'iso') {
+                threeApp.camera.position.set(0, 19, 21);
+                threeApp.controls.target.set(0, 0, 0);
+            } else if (mode === 'top') {
+                threeApp.camera.position.set(0, 26, 0.01);
+                threeApp.controls.target.set(0, 0, 0);
+            }
+            if (threeApp.controls) threeApp.controls.update();
+        }
+
+        function animateThreeScene() {
+            if (!threeApp.renderer || !threeApp.scene || !threeApp.camera) return;
+            requestAnimationFrame(animateThreeScene);
+
+            const time = performance.now() * 0.001;
+
+            // Animate moving escalator steps along each ramp
+            threeApp.animatedLifts.forEach(lift => {
+                const halfLen = lift.length * 0.45;
+                lift.steps.forEach((stepMesh, idx) => {
+                    const progress = ((time * 0.65 + lift.phase + idx / lift.steps.length) % 1);
+                    stepMesh.position.y = -halfLen + progress * (halfLen * 2);
+                    stepMesh.position.z = 0.09;
+                });
+            });
+
+            // Animate snake body slither in place, tongue flicker & head sway
+            threeApp.animatedSnakes.forEach(snk => {
+                if (time - snk.lastTubeUpdate > 0.06) {
+                    snk.lastTubeUpdate = time;
+                    const mid1 = new THREE.Vector3().lerpVectors(snk.startVec, snk.endVec, 0.33);
+                    const mid2 = new THREE.Vector3().lerpVectors(snk.startVec, snk.endVec, 0.66);
+                    const perp = new THREE.Vector3(-(snk.endVec.z - snk.startVec.z), 0, snk.endVec.x - snk.startVec.x).normalize();
+
+                    const wavePhase = time * 3.2 + snk.phase;
+                    mid1.addScaledVector(perp, 0.85 + Math.sin(wavePhase) * 0.18);
+                    mid1.y += 0.25 + Math.cos(wavePhase * 1.3) * 0.05;
+                    mid2.addScaledVector(perp, -0.85 - Math.cos(wavePhase) * 0.18);
+                    mid2.y += 0.15 + Math.sin(wavePhase * 1.3) * 0.05;
+
+                    const curve = new THREE.CatmullRomCurve3([snk.startVec, mid1, mid2, snk.endVec]);
+                    const newGeo = new THREE.TubeGeometry(curve, 32, 0.16, 12, false);
+                    if (snk.bodyMesh.geometry) snk.bodyMesh.geometry.dispose();
+                    snk.bodyMesh.geometry = newGeo;
+
+                    const headPoint = curve.getPoint(0);
+                    const aheadPoint = curve.getPoint(0.08);
+                    const outwardForward = new THREE.Vector3().subVectors(headPoint, aheadPoint);
+                    outwardForward.y = 0;
+                    if (outwardForward.lengthSq() < 0.0001) outwardForward.set(0, 0, 1);
+                    outwardForward.normalize();
+
+                    const rightVec = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), outwardForward).normalize();
+                    const rotMat = new THREE.Matrix4().makeBasis(rightVec, new THREE.Vector3(0, 1, 0), outwardForward);
+                    snk.headGroup.quaternion.setFromRotationMatrix(rotMat);
+                }
+
+                snk.headGroup.position.y = snk.startVec.y + Math.sin(time * 4.5 + snk.phase) * 0.04;
+                snk.tongue.position.z = 0.42 + Math.sin(time * 12 + snk.phase) * 0.045;
+            });
+
+            // Optional follow active pawn camera
+            if (gameState.cameraMode === 'follow' && threeApp.pawns[gameState.activePlayerIndex]) {
+                const targetPos = threeApp.pawns[gameState.activePlayerIndex].mesh.position;
+                threeApp.controls.target.lerp(targetPos, 0.08);
+            }
+
+            if (threeApp.controls) threeApp.controls.update();
+            threeApp.renderer.render(threeApp.scene, threeApp.camera);
+        }
+
+        /* ==========================================================================
+           8. DICE ROLLING & PAWN MOVEMENT ENGINE
+           ========================================================================== */
+        function humanRollDice() {
+            if (gameState.isDiceRolling || gameState.isMoving) return;
+            rollDiceProcess();
+        }
+
+        function rollDiceProcess() {
+            gameState.isDiceRolling = true;
+            updateGameHUD();
+
+            playRollSound();
+
+            const diceMesh = threeApp.diceMesh;
+            diceMesh.visible = true;
+            const homeX = 7.6;
+            const homeZ = 7.6;
+            const baseY = 0.95;
+            diceMesh.position.set(homeX, baseY, homeZ);
+
+            const diceValBadge = document.getElementById('diceResultBadge');
+            diceValBadge.classList.add('hidden');
+
+            const diceResult = Math.floor(Math.random() * 6) + 1;
+
+            let rolls = 0;
+            const rollInterval = setInterval(() => {
+                diceMesh.rotation.x += 0.4;
+                diceMesh.rotation.y += 0.5;
+                diceMesh.position.set(
+                    homeX + Math.sin(rolls * 0.7) * 0.2,
+                    baseY + Math.abs(Math.sin(rolls * 0.5)) * 0.45,
+                    homeZ + Math.cos(rolls * 0.7) * 0.2
+                );
+                rolls++;
+
+                if (rolls > 15) {
+                    clearInterval(rollInterval);
+                    diceMesh.position.set(homeX, baseY, homeZ);
+                    diceMesh.rotation.set(0, 0, 0);
+
+                    // Show Dice Result Badge
+                    document.getElementById('diceValDisplay').innerText = diceResult;
+                    diceValBadge.classList.remove('hidden');
+
+                    setTimeout(() => {
+                        diceMesh.visible = false;
+                        gameState.isDiceRolling = false;
+                        moveActivePlayerPawn(diceResult);
+                    }, 500);
+                }
+            }, 60);
+        }
+
+        function moveActivePlayerPawn(diceValue) {
+            gameState.isMoving = true;
+            const p = gameState.players[gameState.activePlayerIndex];
+            const pawnObj = threeApp.pawns[gameState.activePlayerIndex];
+
+            let targetPos = p.position + diceValue;
+
+            // Aturan Pantulan di Kotak 100
+            if (targetPos > 100) {
+                const excess = targetPos - 100;
+                targetPos = 100 - excess;
+            }
+
+            const stepPath = [];
+            if (targetPos >= p.position) {
+                for (let i = p.position + 1; i <= targetPos; i++) stepPath.push(i);
+            } else {
+                for (let i = p.position - 1; i >= targetPos; i--) stepPath.push(i);
+            }
+
+            let stepIdx = 0;
+
+            function animateNextStep() {
+                if (stepIdx >= stepPath.length) {
+                    p.position = targetPos;
+                    gameState.isMoving = false;
+                    updateGameHUD();
+
+                    // Check Question Trigger
+                    setTimeout(() => {
+                        triggerQuestionForTile(p.position);
+                    }, 400);
+                    return;
+                }
+
+                const currentTileNum = stepPath[stepIdx];
+                const destCoords = threeApp.tileCoords[currentTileNum];
+
+                // Jump Arc Interpolation
+                const startPos = pawnObj.mesh.position.clone();
+                const endPos = new THREE.Vector3(destCoords.x, destCoords.y + 0.1, destCoords.z);
+
+                playStepSound();
+
+                let progress = 0;
+                const jumpInterval = setInterval(() => {
+                    progress += 0.15;
+                    if (progress >= 1) {
+                        progress = 1;
+                        clearInterval(jumpInterval);
+                        pawnObj.mesh.position.copy(endPos);
+                        stepIdx++;
+                        setTimeout(animateNextStep, 80);
+                    } else {
+                        pawnObj.mesh.position.lerpVectors(startPos, endPos, progress);
+                        pawnObj.mesh.position.y += Math.sin(progress * Math.PI) * 0.4; // Jump Height
+                    }
+                }, 30);
+            }
+
+            animateNextStep();
+        }
+
+        /* ==========================================================================
+           9. QUESTION SYSTEM & ANSWER HANDLING
+           ========================================================================== */
+        function triggerQuestionForTile(tileNum) {
+            // Get unasked question
+            let available = QUESTION_BANK.filter(q => !gameState.askedQuestionIds.has(q.id));
+            if (available.length === 0) {
+                gameState.askedQuestionIds.clear(); // Reset if all asked
+                available = QUESTION_BANK;
+            }
+
+            const q = available[Math.floor(Math.random() * available.length)];
+            gameState.askedQuestionIds.add(q.id);
+            gameState.currentQuestion = q;
+            gameState.selectedOptions = [];
+
+            // Populate Question Modal UI
+            document.getElementById('qCategoryBadge').innerText = q.category;
+            document.getElementById('qTypeBadge').innerText = q.type === 'single' ? 'Pilihan Ganda (1 Jawaban)' : 'Pilihan Ganda Kompleks (Centang Semua yang Benar)';
+            document.getElementById('qNumberTag').innerText = `Soal #${q.id}`;
+            document.getElementById('qText').innerText = q.question;
+
+            const optionsCont = document.getElementById('qOptionsContainer');
+            optionsCont.innerHTML = '';
+
+            document.getElementById('qFeedbackPanel').classList.add('hidden');
+            document.getElementById('submitAnswerBtn').classList.remove('hidden');
+
+            const activeP = gameState.players[gameState.activePlayerIndex];
+
+            q.options.forEach((optText, optIdx) => {
+                const optBox = document.createElement('label');
+                optBox.className = 'p-3.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 cursor-pointer flex items-center gap-3 transition text-xs md:text-sm text-slate-200';
+
+                const inputType = q.type === 'single' ? 'radio' : 'checkbox';
+                optBox.innerHTML = `
+                    <input type="${inputType}" name="qOption" value="${optIdx}" onchange="handleOptionSelect(${optIdx}, this.checked)" class="w-4 h-4 accent-amber-500 cursor-pointer">
+                    <span>${optText}</span>
+                `;
+                optionsCont.appendChild(optBox);
+            });
+
+            openModal('questionModal');
+
+            // If Active Player is AI, auto select answer after delay
+            if (activeP.isAI) {
+                document.getElementById('submitAnswerBtn').classList.add('hidden');
+                setTimeout(() => {
+                    aiAnswerQuestion(q);
+                }, 1400);
+            }
+        }
+
+        function handleOptionSelect(optIdx, isChecked) {
+            const q = gameState.currentQuestion;
+            if (q.type === 'single') {
+                gameState.selectedOptions = [optIdx];
+            } else {
+                if (isChecked) {
+                    if (!gameState.selectedOptions.includes(optIdx)) gameState.selectedOptions.push(optIdx);
+                } else {
+                    gameState.selectedOptions = gameState.selectedOptions.filter(i => i !== optIdx);
+                }
+            }
+        }
+
+        function submitUserAnswer() {
+            if (gameState.selectedOptions.length === 0) {
+                return;
+            }
+            evaluateAnswer(gameState.selectedOptions);
+        }
+
+        function aiAnswerQuestion(q) {
+            let accuracy = 0.7; // Normal
+            if (gameState.aiDifficulty === 'easy') accuracy = 0.45;
+            if (gameState.aiDifficulty === 'hard') accuracy = 0.90;
+
+            const isCorrect = Math.random() < accuracy;
+            let chosen = [];
+
+            if (q.type === 'single') {
+                if (isCorrect) {
+                    chosen = [q.correct];
+                } else {
+                    const wrongOpts = [0, 1, 2, 3].filter(i => i !== q.correct);
+                    chosen = [wrongOpts[Math.floor(Math.random() * wrongOpts.length)]];
+                }
+            } else {
+                // Complex
+                if (isCorrect) {
+                    chosen = [...q.correct];
+                } else {
+                    chosen = [0]; // Random incorrect selection
+                }
+            }
+
+            evaluateAnswer(chosen);
+        }
+
+        function evaluateAnswer(userChoices) {
+            const q = gameState.currentQuestion;
+            const activeP = gameState.players[gameState.activePlayerIndex];
+            let isCorrect = false;
+
+            if (q.type === 'single') {
+                isCorrect = userChoices.length === 1 && userChoices[0] === q.correct;
+            } else {
+                // Complex: Correct if user choices match q.correct exactly
+                const setCorrect = new Set(q.correct);
+                const setUser = new Set(userChoices);
+                isCorrect = setCorrect.size === setUser.size && [...setCorrect].every(val => setUser.has(val));
+            }
+
+            // Score updates
+            if (isCorrect) {
+                activeP.score += 10;
+                activeP.correctAnswers += 1;
+                playCorrectSound();
+            } else {
+                activeP.score = Math.max(0, activeP.score - 5);
+                activeP.wrongAnswers += 1;
+                playWrongSound();
+            }
+
+            // Render Feedback Panel
+            const feedbackPanel = document.getElementById('qFeedbackPanel');
+            const feedbackIcon = document.getElementById('qFeedbackIcon');
+            const feedbackTitle = document.getElementById('qFeedbackTitle');
+            const feedbackScore = document.getElementById('qFeedbackScore');
+
+            feedbackPanel.classList.remove('hidden');
+            document.getElementById('submitAnswerBtn').classList.add('hidden');
+
+            if (isCorrect) {
+                feedbackPanel.className = 'mt-4 p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/40 transition-all';
+                feedbackIcon.className = 'w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-slate-950 font-black text-sm';
+                feedbackIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+                feedbackTitle.innerText = 'Jawaban Benar!';
+                feedbackTitle.className = 'font-extrabold text-sm text-emerald-400';
+                feedbackScore.className = 'ml-auto font-black text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                feedbackScore.innerText = '+10 POIN';
+            } else {
+                feedbackPanel.className = 'mt-4 p-4 rounded-2xl border border-rose-500/40 bg-rose-950/40 transition-all';
+                feedbackIcon.className = 'w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-white font-black text-sm';
+                feedbackIcon.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                feedbackTitle.innerText = 'Jawaban Kurang Tepat';
+                feedbackTitle.className = 'font-extrabold text-sm text-rose-400';
+                feedbackScore.className = 'ml-auto font-black text-xs px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                feedbackScore.innerText = '-5 POIN';
+            }
+
+            document.getElementById('qExplanationText').innerText = q.explanation;
+            updateGameHUD();
+
+            // If AI turn, auto proceed
+            if (activeP.isAI) {
+                setTimeout(() => {
+                    closeQuestionModal();
+                }, 2200);
+            }
+        }
+
+        function closeQuestionModal() {
+            closeModal('questionModal');
+            checkEscalatorOrSnake();
+        }
+
+        /* ==========================================================================
+           10. ESCALATOR & SNAKE BOARD INTERACTIONS & WIN CONDITION
+           ========================================================================== */
+        function checkEscalatorOrSnake() {
+            const p = gameState.players[gameState.activePlayerIndex];
+            const pawnObj = threeApp.pawns[gameState.activePlayerIndex];
+
+            // Escalator check
+            if (gameState.escalators[p.position]) {
+                const destTile = gameState.escalators[p.position];
+                playEscalatorSound();
+
+                const startCoords = threeApp.tileCoords[p.position];
+                const destCoords = threeApp.tileCoords[destTile];
+
+                animateSlidePawn(pawnObj.mesh, startCoords, destCoords, () => {
+                    p.position = destTile;
+                    updateGameHUD();
+                    checkWinOrNextTurn();
+                });
+                return;
+            }
+
+            // Snake check
+            if (gameState.snakes[p.position]) {
+                const destTile = gameState.snakes[p.position];
+                playSnakeSound();
+
+                const startCoords = threeApp.tileCoords[p.position];
+                const destCoords = threeApp.tileCoords[destTile];
+
+                animateSlidePawn(pawnObj.mesh, startCoords, destCoords, () => {
+                    p.position = destTile;
+                    updateGameHUD();
+                    checkWinOrNextTurn();
+                });
+                return;
+            }
+
+            checkWinOrNextTurn();
+        }
+
+        function animateSlidePawn(mesh, startCoords, destCoords, callback) {
+            const startVec = new THREE.Vector3(startCoords.x, startCoords.y + 0.1, startCoords.z);
+            const endVec = new THREE.Vector3(destCoords.x, destCoords.y + 0.1, destCoords.z);
+
+            let progress = 0;
+            const slideInterval = setInterval(() => {
+                progress += 0.04;
+                if (progress >= 1) {
+                    progress = 1;
+                    clearInterval(slideInterval);
+                    mesh.position.copy(endVec);
+                    if (callback) callback();
+                } else {
+                    mesh.position.lerpVectors(startVec, endVec, progress);
+                    mesh.position.y += Math.sin(progress * Math.PI) * 0.8;
+                }
+            }, 30);
+        }
+
+        function checkWinOrNextTurn() {
+            const p = gameState.players[gameState.activePlayerIndex];
+
+            if (p.position === 100) {
+                // WINNER DETECTED!
+                triggerVictorySequence(p);
+                return;
+            }
+
+            // Pass Turn
+            gameState.activePlayerIndex = (gameState.activePlayerIndex + 1) % gameState.players.length;
+            updateGameHUD();
+            checkAITurn();
+        }
+
+        function checkAITurn() {
+            const activeP = gameState.players[gameState.activePlayerIndex];
+            if (activeP.isAI && gameState.gameActive && !gameState.isPaused) {
+                setTimeout(() => {
+                    rollDiceProcess();
+                }, 1200);
+            }
+        }
+
+        function triggerVictorySequence(winnerP) {
+            gameState.gameActive = false;
+            playVictorySound();
+
+            // Confetti animation
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            document.getElementById('winnerNameDisplay').innerText = winnerP.name;
+
+            // Build Leaderboard Table
+            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+            const boardList = document.getElementById('leaderboardList');
+            boardList.innerHTML = '';
+
+            sortedPlayers.forEach((p, rank) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-2.5 bg-slate-800/70 rounded-xl text-xs';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black text-[10px] flex items-center justify-center">#${rank + 1}</span>
+                        <span class="font-bold text-white">${p.name}</span>
+                    </div>
+                    <div class="flex items-center gap-4 text-slate-300">
+                        <span>Kotak: <b>${p.position}</b></span>
+                        <span class="text-amber-400 font-bold">${p.score} Pts</span>
+                    </div>
+                `;
+                boardList.appendChild(item);
+            });
+
+            openModal('victoryModal');
+        }
+
+        function restartGameSameSetup() {
+            closeModal('victoryModal');
+            launch3DGame();
+        }
+
+        /* ==========================================================================
+           11. FLOATING CANVAS BACKGROUND ANIMATED SNAKES & LADDERS SCENE
+           ========================================================================== */
+        function initBgCanvas() {
+            const canvas = document.getElementById('bgCanvas');
+            const ctx = canvas.getContext('2d');
+            let w, h;
+
+            function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Floating gold dust sparkles
+            const particles = Array.from({ length: 32 }, () => ({
+                x: Math.random() * w,
+                y: Math.random() * h,
+                radius: Math.random() * 2.2 + 1,
+                speedY: Math.random() * 0.45 + 0.15,
+                alpha: Math.random() * 0.45 + 0.15
+            }));
+
+            // Animated slithering snakes across the menu backdrop
+            const menuSnakes = [
+                {
+                    baseY: 0.22, amplitude: 28, wavelength: 0.011, speed: 0.032, length: 240,
+                    x: -260, dir: 1, colorA: '#f59e0b', colorB: '#1e293b', radius: 13
+                },
+                {
+                    baseY: 0.78, amplitude: 32, wavelength: 0.010, speed: 0.026, length: 270,
+                    x: w + 260, dir: -1, colorA: '#16a34a', colorB: '#facc15', radius: 14
+                },
+                {
+                    baseY: 0.50, amplitude: 24, wavelength: 0.013, speed: 0.022, length: 210,
+                    x: w * 0.2, dir: 1, colorA: '#06b6d4', colorB: '#fb7185', radius: 11
+                }
+            ];
+
+            // Floating 3D-style tumbling dice
+            const floatingDice = [
+                { xRatio: 0.12, yRatio: 0.28, size: 46, value: 6, phase: 0, rotSpeed: 0.014, accent: '#f59e0b' },
+                { xRatio: 0.88, yRatio: 0.25, size: 42, value: 5, phase: 1.8, rotSpeed: -0.016, accent: '#38bdf8' },
+                { xRatio: 0.14, yRatio: 0.75, size: 40, value: 3, phase: 3.1, rotSpeed: 0.012, accent: '#10b981' },
+                { xRatio: 0.87, yRatio: 0.74, size: 48, value: 4, phase: 4.5, rotSpeed: -0.013, accent: '#f43f5e' }
+            ];
+
+            // Animated escalators on left & right sides
+            const menuEscalators = [
+                { xRatio: 0.07, yRatio: 0.52, angle: -0.55, length: 165, width: 34, phase: 0 },
+                { xRatio: 0.93, yRatio: 0.50, angle: 0.55, length: 165, width: 34, phase: 1.5 }
+            ];
+
+            // Hopping colorful pawns
+            const menuPawns = [
+                { xRatio: 0.22, yRatio: 0.16, color: '#ef4444', phase: 0 },
+                { xRatio: 0.78, yRatio: 0.17, color: '#3b82f6', phase: 1.2 },
+                { xRatio: 0.20, yRatio: 0.85, color: '#10b981', phase: 2.4 },
+                { xRatio: 0.80, yRatio: 0.84, color: '#f59e0b', phase: 3.6 }
+            ];
+
+            function drawIsometricBoardGrid(time) {
+                ctx.save();
+                ctx.translate(w / 2, h / 2 + Math.sin(time * 0.8) * 6);
+                ctx.rotate(-0.12);
+                ctx.scale(1, 0.58);
+
+                const cols = 10;
+                const rows = 10;
+                const tileSize = Math.max(46, Math.min(w, h) * 0.075);
+                const gridW = cols * tileSize;
+                const gridH = rows * tileSize;
+                const startX = -gridW / 2;
+                const startY = -gridH / 2;
+
+                const tileColors = [
+                    'rgba(254, 243, 199, 0.13)',
+                    'rgba(220, 252, 231, 0.13)',
+                    'rgba(224, 242, 254, 0.13)',
+                    'rgba(252, 231, 243, 0.13)',
+                    'rgba(237, 233, 254, 0.13)'
+                ];
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const tx = startX + c * tileSize;
+                        const ty = startY + r * tileSize;
+                        ctx.fillStyle = tileColors[(r + c) % tileColors.length];
+                        ctx.fillRect(tx + 2, ty + 2, tileSize - 4, tileSize - 4);
+                        ctx.strokeStyle = 'rgba(245, 158, 11, 0.16)';
+                        ctx.lineWidth = 1.2;
+                        ctx.strokeRect(tx + 2, ty + 2, tileSize - 4, tileSize - 4);
+                    }
+                }
+                ctx.restore();
+            }
+
+            function drawEscalator(esc, time) {
+                const cx = w * esc.xRatio;
+                const cy = h * esc.yRatio + Math.sin(time * 1.4 + esc.phase) * 8;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(esc.angle);
+
+                const halfL = esc.length / 2;
+                const halfW = esc.width / 2;
+
+                // Track body
+                ctx.fillStyle = 'rgba(30, 41, 59, 0.78)';
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.roundRect(-halfW, -halfL, esc.width, esc.length, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // Moving yellow escalator steps
+                const stepCount = 8;
+                const stepSpacing = (esc.length - 16) / stepCount;
+                const offset = ((time * 36) % stepSpacing);
+
+                ctx.fillStyle = '#facc15';
+                for (let i = 0; i < stepCount; i++) {
+                    const sy = halfL - 10 - i * stepSpacing - offset;
+                    if (sy > -halfL + 6 && sy < halfL - 6) {
+                        ctx.fillRect(-halfW + 5, sy - 2, esc.width - 10, 4);
+                    }
+                }
+                ctx.restore();
+            }
+
+            function drawSlitheringSnake(snake, time) {
+                snake.x += snake.dir * snake.speed * 75;
+                if (snake.dir === 1 && snake.x - snake.length > w + 80) {
+                    snake.x = -80;
+                } else if (snake.dir === -1 && snake.x + snake.length < -80) {
+                    snake.x = w + 80;
+                }
+
+                const segments = 26;
+                const segStep = snake.length / segments;
+                const basePy = h * snake.baseY;
+                const pts = [];
+
+                for (let i = 0; i <= segments; i++) {
+                    const px = snake.x - snake.dir * i * segStep;
+                    const wave = Math.sin(px * snake.wavelength + time * 3.5) * snake.amplitude;
+                    pts.push({ x: px, y: basePy + wave });
+                }
+
+                // Draw tapered striped snake body from tail to neck
+                for (let i = segments; i >= 1; i--) {
+                    const ratio = 1 - i / (segments + 2);
+                    const r = Math.max(3.5, snake.radius * ratio);
+                    ctx.beginPath();
+                    ctx.arc(pts[i].x, pts[i].y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = i % 2 === 0 ? snake.colorA : snake.colorB;
+                    ctx.fill();
+                }
+
+                // Draw expressive snake head facing movement direction
+                const head = pts[0];
+                const neck = pts[1];
+                const angle = Math.atan2(head.y - neck.y, head.x - neck.x);
+
+                ctx.save();
+                ctx.translate(head.x, head.y);
+                ctx.rotate(angle);
+
+                // Forked flicking tongue
+                const tongueLen = 12 + Math.max(0, Math.sin(time * 9 + snake.baseY * 10)) * 9;
+                ctx.strokeStyle = '#f43f5e';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(snake.radius * 0.9, 0);
+                ctx.lineTo(snake.radius + tongueLen, 0);
+                ctx.lineTo(snake.radius + tongueLen + 5, -4);
+                ctx.moveTo(snake.radius + tongueLen, 0);
+                ctx.lineTo(snake.radius + tongueLen + 5, 4);
+                ctx.stroke();
+
+                // Head oval
+                ctx.fillStyle = snake.colorA;
+                ctx.beginPath();
+                ctx.ellipse(2, 0, snake.radius * 1.25, snake.radius * 1.05, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Smile arc
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(5, 0, snake.radius * 0.65, -0.45, 0.45);
+                ctx.stroke();
+
+                // Cartoon eyes + pupils
+                [-snake.radius * 0.48, snake.radius * 0.48].forEach(ey => {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(5, ey, 4.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(6.4, ey, 2.2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.restore();
+            }
+
+            function drawFloatingDie(die, time) {
+                const cx = w * die.xRatio;
+                const cy = h * die.yRatio + Math.sin(time * 1.6 + die.phase) * 14;
+                const rot = Math.sin(time * 1.1 + die.phase) * 0.35 + time * die.rotSpeed;
+                const s = die.size;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(rot);
+
+                // 3D depth shadow edge
+                ctx.fillStyle = die.accent;
+                ctx.beginPath();
+                ctx.roundRect(-s / 2 + 5, -s / 2 + 6, s, s, 10);
+                ctx.fill();
+
+                // White die face
+                ctx.fillStyle = '#f8fafc';
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(-s / 2, -s / 2, s, s, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                // Pips
+                ctx.fillStyle = die.value === 1 || die.value === 4 ? '#ef4444' : '#0f172a';
+                const pip = (px, py) => {
+                    ctx.beginPath();
+                    ctx.arc(px, py, s * 0.085, 0, Math.PI * 2);
+                    ctx.fill();
+                };
+                const d = s * 0.26;
+                if (die.value === 1 || die.value === 3 || die.value === 5) pip(0, 0);
+                if (die.value >= 2) { pip(-d, -d); pip(d, d); }
+                if (die.value >= 4) { pip(d, -d); pip(-d, d); }
+                if (die.value === 6) { pip(-d, 0); pip(d, 0); }
+
+                ctx.restore();
+            }
+
+            function drawHoppingPawn(pawn, time) {
+                const hop = Math.abs(Math.sin(time * 2.6 + pawn.phase)) * 18;
+                const cx = w * pawn.xRatio + Math.cos(time * 1.3 + pawn.phase) * 10;
+                const cy = h * pawn.yRatio - hop;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+
+                // Ground shadow
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+                ctx.beginPath();
+                ctx.ellipse(0, 22 + hop, 14 - hop * 0.25, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Pawn body
+                ctx.fillStyle = pawn.color;
+                ctx.beginPath();
+                ctx.moveTo(-12, 18);
+                ctx.lineTo(12, 18);
+                ctx.lineTo(6, -2);
+                ctx.lineTo(-6, -2);
+                ctx.closePath();
+                ctx.fill();
+
+                // Pawn head
+                ctx.fillStyle = '#f8d5c2';
+                ctx.beginPath();
+                ctx.arc(0, -10, 9, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Peci cap
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-8, -20, 16, 6);
+
+                ctx.restore();
+            }
+
+            function draw() {
+                const time = performance.now() * 0.001;
+                ctx.clearRect(0, 0, w, h);
+
+                // 1. Subtle 3D Isometric Board Grid
+                drawIsometricBoardGrid(time);
+
+                // 2. Floating Gold Sparkles
+                ctx.fillStyle = '#f59e0b';
+                particles.forEach(p => {
+                    ctx.globalAlpha = p.alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    p.y -= p.speedY;
+                    if (p.y < 0) {
+                        p.y = h;
+                        p.x = Math.random() * w;
+                    }
+                });
+                ctx.globalAlpha = 1;
+
+                // 3. Animated Escalators
+                menuEscalators.forEach(esc => drawEscalator(esc, time));
+
+                // 4. Slithering Striped Snakes
+                menuSnakes.forEach(snk => drawSlitheringSnake(snk, time));
+
+                // 5. Tumbling 3D-Style Dice
+                floatingDice.forEach(die => drawFloatingDie(die, time));
+
+                // 6. Hopping Pawns
+                menuPawns.forEach(pawn => drawHoppingPawn(pawn, time));
+
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        // Initialize Background Canvas on Window Load
+        window.onload = function () {
+            initBgCanvas();
+        };
+
+    </script>
+</body>
+</html>
